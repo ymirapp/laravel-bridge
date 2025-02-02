@@ -1,0 +1,60 @@
+{
+    "name": "ymirapp/laravel-bridge",
+    "description": "Laravel integration for Ymir",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Carl Alexander",
+            "email": "support@ymirapp.com",
+            "homepage": "https://ymirapp.com"
+        }
+    ],
+    "require": {
+        "php": "^7.4|^8.0",
+        "aws/aws-sdk-php": "^3.80",
+        "cachewerk/relay": "^0.10.0",
+        "illuminate/redis": "^7.0|^8.0|^9.0|^10.0|^11.0",
+        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "orchestra/testbench": "^5.0|^6.0|^7.0|^8.0|^9.0",
+        "php-parallel-lint/php-parallel-lint": "^1.1",
+        "phpro/grumphp": "^1.0",
+        "phpstan/phpstan": "^1.11.0",
+        "sebastian/phpcpd": "^6.0.3",
+        "symfony/filesystem": "^5.0|^6.0|^7.0"
+    },
+    "replace": {
+        "ext-relay": "*"
+    },
+    "config": {
+        "allow-plugins": {
+            "phpro/grumphp": true
+        },
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "Ymir\\Bridge\\Laravel\\": "src"
+        },
+        "files": [
+            "src/ymir-init.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ymir\\Bridge\\Laravel\\Tests\\": "tests"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Ymir\\Bridge\\Laravel\\YmirServiceProvider"
+            ]
+        }
+    }
+}

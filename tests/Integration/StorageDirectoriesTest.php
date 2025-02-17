@@ -26,6 +26,10 @@ class StorageDirectoriesTest extends TestCase
     {
         (new Filesystem())->remove(StorageDirectories::PATH);
 
+        $this->assertDirectoryDoesNotExist(StorageDirectories::PATH.'/bootstrap/cache');
+        $this->assertDirectoryDoesNotExist(StorageDirectories::PATH.'/framework/cache');
+        $this->assertDirectoryDoesNotExist(StorageDirectories::PATH.'/framework/views');
+
         StorageDirectories::create();
 
         $this->assertDirectoryExists(StorageDirectories::PATH.'/bootstrap/cache');

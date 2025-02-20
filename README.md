@@ -20,7 +20,7 @@ The Ymir Laravel Bridge provides integration to run a [Laravel][2] project on [Y
 Install the Ymir Laravel Bridge in your project using composer:
 
 ```
-$ composer require ymirapp/ymir-laravel-bridge
+$ composer require ymirapp/laravel-bridge
 ```
 
 ## Contributing

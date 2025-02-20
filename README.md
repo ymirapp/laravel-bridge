@@ -31,5 +31,10 @@ Install dependencies using composer:
 $ composer install
 ```
 
+## Links
+
+ * [Documentation][3]
+
 [1]: https://ymirapp.com
 [2]: https://laravel.com
+[3]: https://docs.ymirapp.com

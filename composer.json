@@ -14,12 +14,12 @@
         "php": "^7.4|^8.0",
         "aws/aws-sdk-php": "^3.80",
         "cachewerk/relay": "^0.10.0",
-        "illuminate/redis": "^7.0|^8.0|^9.0|^10.0|^11.0",
-        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0"
+        "illuminate/redis": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
+        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",
-        "orchestra/testbench": "^5.0|^6.0|^7.0|^8.0|^9.0",
+        "orchestra/testbench": "^5.0|^6.0|^7.0|^8.0|^9.0|^10.0",
         "php-parallel-lint/php-parallel-lint": "^1.1",
         "phpro/grumphp": "^1.0",
         "phpstan/phpstan": "^1.11.0",

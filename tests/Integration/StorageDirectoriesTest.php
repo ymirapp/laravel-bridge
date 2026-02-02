@@ -22,7 +22,7 @@ use Ymir\Bridge\Laravel\StorageDirectories;
  */
 class StorageDirectoriesTest extends TestCase
 {
-    public function testCreateCreatesDirectories()
+    public function testCreateCreatesDirectories(): void
     {
         (new Filesystem())->remove(StorageDirectories::PATH);
 

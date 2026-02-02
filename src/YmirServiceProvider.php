@@ -52,7 +52,7 @@ class YmirServiceProvider extends ServiceProvider
 
         collect($stores)->filter(function ($store) use ($credentials) {
             return is_array($store) && isset($store['driver'], $store['key']) && 'dynamodb' === $store['driver'] && $credentials['key'] === $store['key'];
-        })->each(function ($store, $name) use ($credentials) {
+        })->each(function ($store, $name) use ($credentials): void {
             Config::set("cache.stores.{$name}.token", $credentials['token']);
         });
 

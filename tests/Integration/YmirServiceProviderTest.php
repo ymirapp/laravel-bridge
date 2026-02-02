@@ -34,7 +34,7 @@ class YmirServiceProviderTest extends TestCase
         putenv('YMIR_ENVIRONMENT=testing');
     }
 
-    public function testAddsAwsSessionTokenToDynamoDbCacheUsingLambdaAccessKey()
+    public function testAddsAwsSessionTokenToDynamoDbCacheUsingLambdaAccessKey(): void
     {
         Config::set('cache.stores', [
             'test' => [
@@ -49,7 +49,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('SESSION_TOKEN', Config::get('cache.stores.test.token'));
     }
 
-    public function testAddsAwsSessionTokenToSesWhenUsingLambdaAccessKey()
+    public function testAddsAwsSessionTokenToSesWhenUsingLambdaAccessKey(): void
     {
         Config::set('services.ses', [
             'key' => 'ACCESS_KEY',
@@ -61,7 +61,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('SESSION_TOKEN', Config::get('services.ses.token'));
     }
 
-    public function testAddsDynamoDbCacheConfigurationIfItsMissing()
+    public function testAddsDynamoDbCacheConfigurationIfItsMissing(): void
     {
         Config::set('cache.stores.dynamodb', []);
 
@@ -77,7 +77,7 @@ class YmirServiceProviderTest extends TestCase
         ], Config::get('cache.stores.dynamodb'));
     }
 
-    public function testChangesStoragePathWhenInYmirEnvironment()
+    public function testChangesStoragePathWhenInYmirEnvironment(): void
     {
         $this->app->register(YmirServiceProvider::class);
 
@@ -90,7 +90,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('/tmp/storage/framework/cache', Config::get('cache.stores.file.path'));
     }
 
-    public function testConfiguresAssetUrlsWhenEnvironmentVariableIsSetAndConfigIsEmpty()
+    public function testConfiguresAssetUrlsWhenEnvironmentVariableIsSetAndConfigIsEmpty(): void
     {
         Config::set('app.asset_url', null);
         Config::set('app.mix_url', null);
@@ -101,7 +101,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('https://assets.example.com', Config::get('app.mix_url'));
     }
 
-    public function testConfiguresTrustedProxiesWhenNoneAreConfigured()
+    public function testConfiguresTrustedProxiesWhenNoneAreConfigured(): void
     {
         Config::set('trustedproxy.proxies', null);
 
@@ -110,7 +110,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame(['0.0.0.0/0', '2000:0:0:0:0:0:0:0/3'], Config::get('trustedproxy.proxies'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheNotUsingLambdaAccessKey()
+    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheNotUsingLambdaAccessKey(): void
     {
         Config::set('cache.stores', [
             'test' => [
@@ -125,7 +125,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('cache.stores.test.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheWhenAccessKeyIsMissing()
+    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheWhenAccessKeyIsMissing(): void
     {
         putenv('AWS_ACCESS_KEY_ID');
 
@@ -142,7 +142,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('cache.stores.test.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheWhenNotInYmirEnvironment()
+    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('cache.stores', [
@@ -158,7 +158,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('cache.stores.test.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheWhenSessionTokenIsMissing()
+    public function testDoesNotAddAwsSessionTokenToDynamoDbCacheWhenSessionTokenIsMissing(): void
     {
         putenv('AWS_SESSION_TOKEN');
 
@@ -175,7 +175,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('cache.stores.test.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToSesWhenAccessKeyIsMissing()
+    public function testDoesNotAddAwsSessionTokenToSesWhenAccessKeyIsMissing(): void
     {
         putenv('AWS_ACCESS_KEY_ID');
 
@@ -189,7 +189,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('services.ses.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToSesWhenNotInYmirEnvironment()
+    public function testDoesNotAddAwsSessionTokenToSesWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('services.ses', [
@@ -202,7 +202,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('services.ses.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToSesWhenNotUsingLambdaAccessKey()
+    public function testDoesNotAddAwsSessionTokenToSesWhenNotUsingLambdaAccessKey(): void
     {
         Config::set('services.ses', [
             'key' => 'OTHER_KEY',
@@ -214,7 +214,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('services.ses.token'));
     }
 
-    public function testDoesNotAddAwsSessionTokenToSesWhenSessionTokenIsMissing()
+    public function testDoesNotAddAwsSessionTokenToSesWhenSessionTokenIsMissing(): void
     {
         putenv('AWS_SESSION_TOKEN');
 
@@ -228,7 +228,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('services.ses.token'));
     }
 
-    public function testDoesNotAddDynamoDbCacheConfigurationWhenDynamoDbCacheIsConfigured()
+    public function testDoesNotAddDynamoDbCacheConfigurationWhenDynamoDbCacheIsConfigured(): void
     {
         Config::set('cache.stores.dynamodb', [
             'driver' => 'dynamodb',
@@ -243,7 +243,7 @@ class YmirServiceProviderTest extends TestCase
         ], Config::get('cache.stores.dynamodb'));
     }
 
-    public function testDoesNotAddDynamoDbCacheConfigurationWhenNotInYmirEnvironment()
+    public function testDoesNotAddDynamoDbCacheConfigurationWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('cache.stores.dynamodb', []);
@@ -253,7 +253,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame([], Config::get('cache.stores.dynamodb'));
     }
 
-    public function testDoesNotAddDynamoDbCacheConfigurationWhenTableEnvironmentVariableIsMissing()
+    public function testDoesNotAddDynamoDbCacheConfigurationWhenTableEnvironmentVariableIsMissing(): void
     {
         putenv('YMIR_CACHE_TABLE');
         Config::set('cache.stores.dynamodb', []);
@@ -263,7 +263,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame([], Config::get('cache.stores.dynamodb'));
     }
 
-    public function testDoesNotChangeStoragePathWhenNotInYmirEnvironment()
+    public function testDoesNotChangeStoragePathWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
 
@@ -278,7 +278,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNotSame('/tmp/storage/framework/cache', Config::get('cache.stores.file.path'));
     }
 
-    public function testDoesNotConfigureAssetUrlsWhenEnvironmentVariableIsNotSetAndConfigIsEmpty()
+    public function testDoesNotConfigureAssetUrlsWhenEnvironmentVariableIsNotSetAndConfigIsEmpty(): void
     {
         putenv('YMIR_ASSETS_URL');
         Config::set('app.asset_url', null);
@@ -290,7 +290,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('app.mix_url'));
     }
 
-    public function testDoesNotConfigureAssetUrlsWhenEnvironmentVariableIsSetAndConfigIsNotEmpty()
+    public function testDoesNotConfigureAssetUrlsWhenEnvironmentVariableIsSetAndConfigIsNotEmpty(): void
     {
         Config::set('app.asset_url', 'https://other-assets.example.com');
         Config::set('app.mix_url', 'https://other-assets.example.com');
@@ -301,7 +301,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('https://other-assets.example.com', Config::get('app.mix_url'));
     }
 
-    public function testDoesNotConfigureAssetUrlsWhenNotInYmirEnvironment()
+    public function testDoesNotConfigureAssetUrlsWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('app.asset_url', null);
@@ -313,7 +313,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('app.mix_url'));
     }
 
-    public function testDoesNotConfigureTrustedProxiesWhenNotInYmirEnvironment()
+    public function testDoesNotConfigureTrustedProxiesWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('trustedproxy.proxies', null);
@@ -323,7 +323,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('trustedproxy.proxies'));
     }
 
-    public function testDoesNotConfigureTrustedProxiesWhenTheyAreConfigured()
+    public function testDoesNotConfigureTrustedProxiesWhenTheyAreConfigured(): void
     {
         Config::set('trustedproxy.proxies', ['0.0.0.0/0']);
 
@@ -332,7 +332,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame(['0.0.0.0/0'], Config::get('trustedproxy.proxies'));
     }
 
-    public function testDoesNotOverrideRedisClientConfigurationOptionsWhenNotInYmirEnvironment()
+    public function testDoesNotOverrideRedisClientConfigurationOptionsWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('database.redis.client', 'not-relay');
@@ -342,7 +342,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('not-relay', Config::get('database.redis.client'));
     }
 
-    public function testDoesNotOverrideSessionDriverConfigurationOptionsWhenNotInYmirEnvironment()
+    public function testDoesNotOverrideSessionDriverConfigurationOptionsWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
         Config::set('session.driver', 'file');
@@ -352,7 +352,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('file', Config::get('session.driver'));
     }
 
-    public function testOverridesRedisClientConfigurationOptionsWhenInYmirEnvironment()
+    public function testOverridesRedisClientConfigurationOptionsWhenInYmirEnvironment(): void
     {
         Config::set('database.redis.client', 'not-relay');
 
@@ -361,7 +361,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('relay', Config::get('database.redis.client'));
     }
 
-    public function testOverridesSessionDriverConfigurationOptionsWhenInYmirEnvironment()
+    public function testOverridesSessionDriverConfigurationOptionsWhenInYmirEnvironment(): void
     {
         Config::set('session.driver', 'file');
 

@@ -40,7 +40,7 @@ class StorageDirectories
     {
         collect(self::DIRECTORIES)->filter(function ($directory) {
             return !is_dir($directory);
-        })->each(function ($directory) {
+        })->each(function ($directory): void {
             if (!mkdir($directory, 0755, true) && !is_dir($directory)) {
                 throw new \RuntimeException(sprintf('Directory "%s" could not be created', $directory));
             }

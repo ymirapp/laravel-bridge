@@ -50,11 +50,11 @@ class YmirServiceProvider extends ServiceProvider
             return;
         }
 
-        collect($stores)->filter(function ($store) use ($credentials) {
-            return is_array($store) && isset($store['driver'], $store['key']) && 'dynamodb' === $store['driver'] && $credentials['key'] === $store['key'];
-        })->each(function ($store, $name) use ($credentials): void {
-            Config::set("cache.stores.{$name}.token", $credentials['token']);
-        });
+        collect($stores)
+            ->filter(fn ($store): bool => is_array($store) && isset($store['driver'], $store['key']) && 'dynamodb' === $store['driver'] && $credentials['key'] === $store['key'])
+            ->each(function ($store, $name) use ($credentials): void {
+                Config::set("cache.stores.{$name}.token", $credentials['token']);
+            });
 
         if ($credentials['key'] === Config::get('services.ses.key')) {
             Config::set('services.ses.token', $credentials['token']);

@@ -20,19 +20,14 @@
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",
         "orchestra/testbench": "^5.0|^6.0|^7.0|^8.0|^9.0|^10.0",
-        "php-parallel-lint/php-parallel-lint": "^1.1",
-        "phpro/grumphp": "^1.0",
-        "phpstan/phpstan": "^1.11.0",
-        "sebastian/phpcpd": "^6.0.3",
+        "phpstan/phpstan": "^2.0",
+        "rector/rector": "^2.3",
         "symfony/filesystem": "^5.0|^6.0|^7.0"
     },
     "replace": {
         "ext-relay": "*"
     },
     "config": {
-        "allow-plugins": {
-            "phpro/grumphp": true
-        },
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true
@@ -56,5 +51,14 @@
                 "Ymir\\Bridge\\Laravel\\YmirServiceProvider"
             ]
         }
+    },
+    "scripts": {
+        "php-cs-fixer": "php-cs-fixer fix --dry-run --allow-risky=yes",
+        "php-cs-fixer:fix": "php-cs-fixer fix --allow-risky=yes",
+        "phpstan": "phpstan analyze --ansi",
+        "rector": "rector --dry-run",
+        "rector:fix": "rector",
+        "tests:integration": "phpunit --testsuite integration",
+        "tests:unit": "phpunit --testsuite unit"
     }
 }

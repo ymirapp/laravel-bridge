@@ -1,7 +1,6 @@
 {
     "name": "ymirapp/laravel-bridge",
     "description": "Laravel integration for Ymir",
-    "type": "project",
     "license": "MIT",
     "authors": [
         {

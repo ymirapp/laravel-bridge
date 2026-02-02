@@ -13,7 +13,7 @@ The Ymir Laravel Bridge provides integration to run a [Laravel][2] project on [Y
 ## Requirements
 
  * PHP >= 7.4
- * Laravel >= 7.0
+ * Laravel >= 8.0
 
 ## Installation
 

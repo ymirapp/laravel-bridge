@@ -1,0 +1,163 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot access offset ''queue'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Cannot call method connection\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#1 \$container of class Ymir\\Bridge\\Laravel\\Queue\\SqsJob constructor expects Illuminate\\Container\\Container, Illuminate\\Contracts\\Foundation\\Application given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#1 \$name of class Illuminate\\Queue\\WorkerOptions constructor expects string, array\|bool\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#2 \$backoff of class Illuminate\\Queue\\WorkerOptions constructor expects array\<int\>\|int, array\|bool\|int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#2 \$connectionName of method Ymir\\Bridge\\Laravel\\Queue\\Worker\:\:runSqsJob\(\) expects string, array\|bool\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#2 \$string of function explode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, array\|bool\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#3 \$memory of class Illuminate\\Queue\\WorkerOptions constructor expects int, array\|bool\|int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#4 \$connectionName of class Ymir\\Bridge\\Laravel\\Queue\\SqsJob constructor expects string, array\|bool\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#4 \$timeout of class Illuminate\\Queue\\WorkerOptions constructor expects int, array\|bool\|int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#5 \$sleep of class Illuminate\\Queue\\WorkerOptions constructor expects int, array\|bool\|int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#6 \$maxTries of class Illuminate\\Queue\\WorkerOptions constructor expects int, array\|bool\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#7 \$force of class Illuminate\\Queue\\WorkerOptions constructor expects bool, array\|bool\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/QueueWorkCommand.php
+
+		-
+			message: '#^Parameter \#2 \$default of class Ymir\\Bridge\\Laravel\\Queue\\SqsQueue constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Queue/SqsConnector.php
+
+		-
+			message: '#^Parameter \#3 \$prefix of class Ymir\\Bridge\\Laravel\\Queue\\SqsQueue constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Queue/SqsConnector.php
+
+		-
+			message: '#^Parameter \#4 \$suffix of class Ymir\\Bridge\\Laravel\\Queue\\SqsQueue constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Queue/SqsConnector.php
+
+		-
+			message: '#^Parameter \#5 \$dispatchAfterCommit of class Ymir\\Bridge\\Laravel\\Queue\\SqsQueue constructor expects bool, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Queue/SqsConnector.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Queue/SqsJob.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(Ymir\\Bridge\\Laravel\\Queue\\Worker\) and ''resetScope'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Queue/Worker.php
+
+		-
+			message: '#^Property Illuminate\\Queue\\Worker\:\:\$resetScope \(callable\) in isset\(\) is not nullable\.$#'
+			identifier: isset.property
+			count: 1
+			path: src/Queue/Worker.php
+
+		-
+			message: '#^Cannot access offset ''Illuminate\\\\Contracts\\\\Debug\\\\ExceptionHandler'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/YmirServiceProvider.php
+
+		-
+			message: '#^Cannot access offset ''events'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/YmirServiceProvider.php
+
+		-
+			message: '#^Cannot access offset ''queue'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/YmirServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$manager of class Ymir\\Bridge\\Laravel\\Queue\\Worker constructor expects Illuminate\\Contracts\\Queue\\Factory, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/YmirServiceProvider.php
+
+		-
+			message: '#^Parameter \#2 \$events of class Ymir\\Bridge\\Laravel\\Queue\\Worker constructor expects Illuminate\\Contracts\\Events\\Dispatcher, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/YmirServiceProvider.php
+
+		-
+			message: '#^Parameter \#3 \$exceptions of class Ymir\\Bridge\\Laravel\\Queue\\Worker constructor expects Illuminate\\Contracts\\Debug\\ExceptionHandler, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/YmirServiceProvider.php

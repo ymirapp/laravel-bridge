@@ -13,12 +13,35 @@ declare(strict_types=1);
 
 namespace Ymir\Bridge\Laravel;
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
+use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
+use Ymir\Bridge\Laravel\Queue\SqsConnector;
+use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
 class YmirServiceProvider extends ServiceProvider
 {
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        if (!$this->runningOnYmir()) {
+            return;
+        }
+
+        if ($this->app->resolved('queue')) {
+            $this->addQueueConnector();
+        } else {
+            $this->app->afterResolving('queue', function (): void {
+                $this->addQueueConnector();
+            });
+        }
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -36,6 +59,9 @@ class YmirServiceProvider extends ServiceProvider
         $this->configureStderrLogging();
         $this->configureTrustedProxy();
 
+        $this->registerCommands();
+        $this->registerQueueWorker();
+
         // Run this last so that the AWS session token is set for all AWS services after we're done configuring them
         $this->addAwsSessionToken();
     }
@@ -46,21 +72,39 @@ class YmirServiceProvider extends ServiceProvider
     protected function addAwsSessionToken(): void
     {
         $credentials = $this->getAwsCredentials();
-        $stores = Config::get('cache.stores');
 
-        if (empty($credentials['key']) || empty($credentials['token']) || !is_array($stores)) {
+        if (empty($credentials['key']) || empty($credentials['token'])) {
             return;
         }
 
-        collect($stores)
+        collect((array) Config::get('cache.stores'))
             ->filter(fn ($store): bool => is_array($store) && isset($store['driver'], $store['key']) && 'dynamodb' === $store['driver'] && $credentials['key'] === $store['key'])
             ->each(function ($store, $name) use ($credentials): void {
                 Config::set("cache.stores.{$name}.token", $credentials['token']);
             });
 
+        collect((array) Config::get('queue.connections'))
+            ->filter(fn ($connection): bool => is_array($connection) && isset($connection['driver'], $connection['key']) && 'sqs' === $connection['driver'] && $credentials['key'] === $connection['key'])
+            ->each(function ($connection, $name) use ($credentials): void {
+                Config::set("queue.connections.{$name}.token", $credentials['token']);
+            });
+
+        $queueFailedConfig = Config::get('queue.failed');
+        if (is_array($queueFailedConfig) && isset($queueFailedConfig['driver'], $queueFailedConfig['key']) && 'dynamodb' === $queueFailedConfig['driver'] && $credentials['key'] === $queueFailedConfig['key']) {
+            Config::set('queue.failed.token', $credentials['token']);
+        }
+
         if ($credentials['key'] === Config::get('services.ses.key')) {
             Config::set('services.ses.token', $credentials['token']);
         }
+    }
+
+    /**
+     * Add the Ymir SQS queue connector.
+     */
+    protected function addQueueConnector(): void
+    {
+        Queue::extend('sqs', fn (): SqsConnector => new SqsConnector());
     }
 
     /**
@@ -170,6 +214,28 @@ class YmirServiceProvider extends ServiceProvider
         if ('file' === Config::get('session.driver')) {
             Config::set('session.driver', 'cookie');
         }
+    }
+
+    /**
+     * Register the Ymir console commands.
+     */
+    protected function registerCommands(): void
+    {
+        if (!$this->app->runningInConsole()) {
+            return;
+        }
+
+        $this->commands([
+            QueueWorkCommand::class,
+        ]);
+    }
+
+    /**
+     * Register the SQS queue worker.
+     */
+    protected function registerQueueWorker(): void
+    {
+        $this->app->singleton(Worker::class, fn (): Worker => new Worker($this->app['queue'], $this->app['events'], $this->app[ExceptionHandler::class], fn (): bool => $this->app->isDownForMaintenance()));
     }
 
     /**

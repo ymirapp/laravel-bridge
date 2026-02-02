@@ -13,8 +13,13 @@ declare(strict_types=1);
 
 namespace Ymir\Bridge\Laravel\Tests\Integration;
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use Orchestra\Testbench\TestCase;
+use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
+use Ymir\Bridge\Laravel\Queue\SqsQueue;
+use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Laravel\YmirServiceProvider;
 use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
@@ -47,6 +52,19 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('SESSION_TOKEN', Config::get('cache.stores.test.token'));
     }
 
+    public function testAddsAwsSessionTokenToDynamoDbFailedQueueUsingLambdaAccessKey(): void
+    {
+        Config::set('queue.failed', [
+            'driver' => 'dynamodb',
+            'key' => 'ACCESS_KEY',
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('ACCESS_KEY', Config::get('queue.failed.key'));
+        $this->assertSame('SESSION_TOKEN', Config::get('queue.failed.token'));
+    }
+
     public function testAddsAwsSessionTokenToSesWhenUsingLambdaAccessKey(): void
     {
         Config::set('services.ses', [
@@ -57,6 +75,21 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertSame('ACCESS_KEY', Config::get('services.ses.key'));
         $this->assertSame('SESSION_TOKEN', Config::get('services.ses.token'));
+    }
+
+    public function testAddsAwsSessionTokenToSqsQueueConnectionsUsingLambdaAccessKey(): void
+    {
+        Config::set('queue.connections', [
+            'test' => [
+                'driver' => 'sqs',
+                'key' => 'ACCESS_KEY',
+            ],
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('ACCESS_KEY', Config::get('queue.connections.test.key'));
+        $this->assertSame('SESSION_TOKEN', Config::get('queue.connections.test.token'));
     }
 
     public function testAddsDynamoDbCacheConfigurationIfItsMissing(): void
@@ -192,6 +225,19 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('cache.stores.test.token'));
     }
 
+    public function testDoesNotAddAwsSessionTokenToDynamoDbFailedQueueNotUsingLambdaAccessKey(): void
+    {
+        Config::set('queue.failed', [
+            'driver' => 'dynamodb',
+            'key' => 'OTHER_KEY',
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('OTHER_KEY', Config::get('queue.failed.key'));
+        $this->assertNull(Config::get('queue.failed.token'));
+    }
+
     public function testDoesNotAddAwsSessionTokenToSesWhenAccessKeyIsMissing(): void
     {
         putenv('AWS_ACCESS_KEY_ID');
@@ -243,6 +289,21 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertSame('ACCESS_KEY', Config::get('services.ses.key'));
         $this->assertNull(Config::get('services.ses.token'));
+    }
+
+    public function testDoesNotAddAwsSessionTokenToSqsQueueConnectionsNotUsingLambdaAccessKey(): void
+    {
+        Config::set('queue.connections', [
+            'test' => [
+                'driver' => 'sqs',
+                'key' => 'OTHER_KEY',
+            ],
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('OTHER_KEY', Config::get('queue.connections.test.key'));
+        $this->assertNull(Config::get('queue.connections.test.token'));
     }
 
     public function testDoesNotAddDynamoDbCacheConfigurationWhenDynamoDbCacheIsConfigured(): void
@@ -397,6 +458,24 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('file', Config::get('session.driver'));
     }
 
+    public function testDoesNotRegisterQueueWorkCommandWhenNotInYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertArrayNotHasKey('ymir:queue:work', Artisan::all());
+    }
+
+    public function testDoesNotRegisterQueueWorkerWhenNotInYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertFalse($this->app->bound(Worker::class));
+    }
+
     public function testOverridesRedisClientConfigurationOptionsWhenInYmirEnvironment(): void
     {
         Config::set('database.redis.client', 'not-relay');
@@ -413,5 +492,53 @@ class YmirServiceProviderTest extends TestCase
         $this->app->register(YmirServiceProvider::class);
 
         $this->assertSame('cookie', Config::get('session.driver'));
+    }
+
+    public function testRegistersQueueWorkCommandWhenInYmirEnvironment(): void
+    {
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertArrayHasKey('ymir:queue:work', Artisan::all());
+        $this->assertInstanceOf(QueueWorkCommand::class, Artisan::all()['ymir:queue:work']);
+    }
+
+    public function testRegistersQueueWorkerWhenInYmirEnvironment(): void
+    {
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertTrue($this->app->bound(Worker::class));
+        $this->assertInstanceOf(Worker::class, $this->app->make(Worker::class));
+    }
+
+    public function testSqsQueueConnectionDoesNotUseYmirSqsQueueWhenNotInYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+
+        Config::set('queue.connections.sqs', [
+            'driver' => 'sqs',
+            'key' => 'key',
+            'secret' => 'secret',
+            'queue' => 'https://sqs.us-east-1.amazonaws.com/123456789012/queue',
+            'region' => 'us-east-1',
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertNotInstanceOf(SqsQueue::class, Queue::connection('sqs'));
+    }
+
+    public function testSqsQueueConnectionUsesYmirSqsQueueWhenInYmirEnvironment(): void
+    {
+        Config::set('queue.connections.sqs', [
+            'driver' => 'sqs',
+            'key' => 'key',
+            'secret' => 'secret',
+            'queue' => 'https://sqs.us-east-1.amazonaws.com/123456789012/queue',
+            'region' => 'us-east-1',
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertInstanceOf(SqsQueue::class, Queue::connection('sqs'));
     }
 }

@@ -30,6 +30,8 @@ jobs:
     name: Run tests on ${{ matrix.php }}${{ matrix.dependency-version != '' && ' (--prefer-lowest)' || '' }}
     needs: code-quality
     runs-on: ubuntu-latest
+    env:
+      AWS_SUPPRESS_PHP_DEPRECATION_WARNING: true
     strategy:
       fail-fast: false
       matrix:
@@ -49,5 +51,7 @@ jobs:
         run: composer remove --dev --no-security-blocking phpstan/phpstan rector/rector
       - name: Install dependencies
         run: composer update ${{ matrix.dependency-version }} --no-ansi --no-interaction --no-scripts --no-security-blocking --prefer-dist
+      - name: Run unit tests
+        run: composer tests:unit
       - name: Run integration tests
         run: composer tests:integration

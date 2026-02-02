@@ -13,9 +13,9 @@ declare(strict_types=1);
 
 namespace Ymir\Bridge\Laravel\Tests\Integration;
 
-use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 use Ymir\Bridge\Laravel\StorageDirectories;
+use Ymir\Bridge\Laravel\Tests\TestCase;
 
 class StorageDirectoriesTest extends TestCase
 {

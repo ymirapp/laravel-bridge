@@ -18,9 +18,6 @@ use Orchestra\Testbench\TestCase;
 use Ymir\Bridge\Laravel\YmirServiceProvider;
 use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
-/**
- * @covers \Ymir\Bridge\Laravel\YmirServiceProvider
- */
 class YmirServiceProviderTest extends TestCase
 {
     protected function setUp(): void

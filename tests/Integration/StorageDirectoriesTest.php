@@ -17,9 +17,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 use Ymir\Bridge\Laravel\StorageDirectories;
 
-/**
- * @covers \Ymir\Bridge\Laravel\StorageDirectories
- */
 class StorageDirectoriesTest extends TestCase
 {
     public function testCreateCreatesDirectories(): void

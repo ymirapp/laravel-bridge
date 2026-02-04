@@ -15,6 +15,7 @@ namespace Ymir\Bridge\Laravel;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
+use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
 class YmirServiceProvider extends ServiceProvider
 {
@@ -32,6 +33,7 @@ class YmirServiceProvider extends ServiceProvider
         $this->overrideConfigurationOptions();
 
         $this->configureAssetUrls();
+        $this->configureStderrLogging();
         $this->configureTrustedProxy();
 
         // Run this last so that the AWS session token is set for all AWS services after we're done configuring them
@@ -94,6 +96,24 @@ class YmirServiceProvider extends ServiceProvider
         if (!Config::get('app.mix_url')) {
             Config::set('app.mix_url', $assetUrl);
         }
+    }
+
+    /**
+     * Configure STDERR logging channel.
+     */
+    protected function configureStderrLogging(): void
+    {
+        if (!Config::has('logging.channels.stderr')) {
+            return;
+        }
+
+        $stderrFormatter = Config::get('logging.channels.stderr.formatter');
+
+        if (is_string($stderrFormatter) && class_exists($stderrFormatter)) {
+            return;
+        }
+
+        Config::set('logging.channels.stderr.formatter', CloudWatchFormatter::class);
     }
 
     /**

@@ -16,6 +16,7 @@ namespace Ymir\Bridge\Laravel\Tests\Integration;
 use Illuminate\Support\Facades\Config;
 use Orchestra\Testbench\TestCase;
 use Ymir\Bridge\Laravel\YmirServiceProvider;
+use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
 /**
  * @covers \Ymir\Bridge\Laravel\YmirServiceProvider
@@ -99,6 +100,25 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertSame('https://assets.example.com', Config::get('app.asset_url'));
         $this->assertSame('https://assets.example.com', Config::get('app.mix_url'));
+    }
+
+    public function testConfiguresLogsWhenFormatterClassDoesNotExist(): void
+    {
+        Config::set('logging.channels.stderr', ['driver' => 'stderr', 'formatter' => 'NonExistentClass']);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(CloudWatchFormatter::class, Config::get('logging.channels.stderr.formatter'));
+    }
+
+    public function testConfiguresLogsWhenStderrChannelExistsAndNoFormatterIsConfigured(): void
+    {
+        Config::set('logging.channels.stderr', ['driver' => 'stderr']);
+        Config::set('logging.channels.stderr.formatter', null);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(CloudWatchFormatter::class, Config::get('logging.channels.stderr.formatter'));
     }
 
     public function testConfiguresTrustedProxiesWhenNoneAreConfigured(): void
@@ -311,6 +331,34 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertNull(Config::get('app.asset_url'));
         $this->assertNull(Config::get('app.mix_url'));
+    }
+
+    public function testDoesNotConfigureLogsWhenFormatterIsAlreadyConfigured(): void
+    {
+        Config::set('logging.channels.stderr', ['driver' => 'stderr', 'formatter' => 'stdClass']);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('stdClass', Config::get('logging.channels.stderr.formatter'));
+    }
+
+    public function testDoesNotConfigureLogsWhenNotInYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+        Config::set('logging.channels.stderr', ['driver' => 'stderr']);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertNull(Config::get('logging.channels.stderr.formatter'));
+    }
+
+    public function testDoesNotConfigureLogsWhenStderrChannelIsMissing(): void
+    {
+        Config::set('logging.channels', []);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertNull(Config::get('logging.channels.stderr.formatter'));
     }
 
     public function testDoesNotConfigureTrustedProxiesWhenNotInYmirEnvironment(): void

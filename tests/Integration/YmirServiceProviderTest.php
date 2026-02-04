@@ -65,6 +65,21 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('SESSION_TOKEN', Config::get('queue.failed.token'));
     }
 
+    public function testAddsAwsSessionTokenToS3FilesystemDisksUsingLambdaAccessKey(): void
+    {
+        Config::set('filesystems.disks', [
+            'test' => [
+                'driver' => 's3',
+                'key' => 'ACCESS_KEY',
+            ],
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('ACCESS_KEY', Config::get('filesystems.disks.test.key'));
+        $this->assertSame('SESSION_TOKEN', Config::get('filesystems.disks.test.token'));
+    }
+
     public function testAddsAwsSessionTokenToSesWhenUsingLambdaAccessKey(): void
     {
         Config::set('services.ses', [
@@ -236,6 +251,21 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertSame('OTHER_KEY', Config::get('queue.failed.key'));
         $this->assertNull(Config::get('queue.failed.token'));
+    }
+
+    public function testDoesNotAddAwsSessionTokenToS3FilesystemDisksNotUsingLambdaAccessKey(): void
+    {
+        Config::set('filesystems.disks', [
+            'test' => [
+                'driver' => 's3',
+                'key' => 'OTHER_KEY',
+            ],
+        ]);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('OTHER_KEY', Config::get('filesystems.disks.test.key'));
+        $this->assertNull(Config::get('filesystems.disks.test.token'));
     }
 
     public function testDoesNotAddAwsSessionTokenToSesWhenAccessKeyIsMissing(): void

@@ -83,6 +83,12 @@ class YmirServiceProvider extends ServiceProvider
                 Config::set("cache.stores.{$name}.token", $credentials['token']);
             });
 
+        collect((array) Config::get('filesystems.disks'))
+            ->filter(fn ($disk): bool => is_array($disk) && isset($disk['driver'], $disk['key']) && 's3' === $disk['driver'] && $credentials['key'] === $disk['key'])
+            ->each(function ($disk, $name) use ($credentials): void {
+                Config::set("filesystems.disks.{$name}.token", $credentials['token']);
+            });
+
         collect((array) Config::get('queue.connections'))
             ->filter(fn ($connection): bool => is_array($connection) && isset($connection['driver'], $connection['key']) && 'sqs' === $connection['driver'] && $credentials['key'] === $connection['key'])
             ->each(function ($connection, $name) use ($credentials): void {

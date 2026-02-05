@@ -14,6 +14,9 @@ declare(strict_types=1);
 namespace Ymir\Bridge\Laravel;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +32,12 @@ class YmirServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../config/ymir.php' => config_path('ymir.php'),
+            ], 'ymir-config');
+        }
+
         if (!$this->runningOnYmir()) {
             return;
         }
@@ -47,6 +56,8 @@ class YmirServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/ymir.php', 'ymir');
+
         if (!$this->runningOnYmir()) {
             return;
         }
@@ -56,6 +67,7 @@ class YmirServiceProvider extends ServiceProvider
         $this->overrideConfigurationOptions();
 
         $this->configureAssetUrls();
+        $this->configureLoggingRequestContext();
         $this->configureStderrLogging();
         $this->configureTrustedProxy();
 
@@ -146,6 +158,32 @@ class YmirServiceProvider extends ServiceProvider
         if (!Config::get('app.mix_url')) {
             Config::set('app.mix_url', $assetUrl);
         }
+    }
+
+    /**
+     * Configure logging the request context.
+     */
+    protected function configureLoggingRequestContext(): void
+    {
+        if (!Config::get('ymir.logging.request_context')) {
+            return;
+        }
+
+        $this->app->rebinding('request', function (Application $app, Request $request): void {
+            if (!$request->hasHeader('X-Request-ID')) {
+                return;
+            }
+
+            $logManager = $app->make(LogManager::class);
+
+            if (!is_object($logManager) || !method_exists($logManager, 'shareContext')) {
+                return;
+            }
+
+            $logManager->shareContext([
+                'requestId' => $request->header('X-Request-ID'),
+            ]);
+        });
     }
 
     /**

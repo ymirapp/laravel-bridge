@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Ymir\Bridge\Laravel\Tests\Integration;
 
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
@@ -145,6 +147,27 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertSame('https://assets.example.com', Config::get('app.asset_url'));
         $this->assertSame('https://assets.example.com', Config::get('app.mix_url'));
+    }
+
+    public function testConfiguresLoggingRequestContextWhenEnabled(): void
+    {
+        if (!method_exists(LogManager::class, 'shareContext')) {
+            $this->markTestSkipped('LogManager::shareContext is not available in this version of Laravel.');
+        }
+
+        Config::set('ymir.logging.request_context', true);
+
+        $logManager = $this->mock(LogManager::class);
+        $logManager->shouldReceive('shareContext')
+            ->once()
+            ->with(['requestId' => 'test-request-id']);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $request = Request::create('/', 'GET');
+        $request->headers->set('X-Request-ID', 'test-request-id');
+
+        $this->app->instance('request', $request);
     }
 
     public function testConfiguresLogsWhenFormatterClassDoesNotExist(): void
@@ -421,6 +444,25 @@ class YmirServiceProviderTest extends TestCase
         $this->assertNull(Config::get('app.mix_url'));
     }
 
+    public function testDoesNotConfigureLoggingRequestContextWhenDisabled(): void
+    {
+        if (!method_exists(LogManager::class, 'shareContext')) {
+            $this->markTestSkipped('LogManager::shareContext is not available in this version of Laravel.');
+        }
+
+        Config::set('ymir.logging.request_context', false);
+
+        $logManager = $this->mock(LogManager::class);
+        $logManager->shouldNotReceive('shareContext');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $request = Request::create('/', 'GET');
+        $request->headers->set('X-Request-ID', 'test-request-id');
+
+        $this->app->instance('request', $request);
+    }
+
     public function testDoesNotConfigureLogsWhenFormatterIsAlreadyConfigured(): void
     {
         Config::set('logging.channels.stderr', ['driver' => 'stderr', 'formatter' => 'stdClass']);
@@ -504,6 +546,41 @@ class YmirServiceProviderTest extends TestCase
         $this->app->register(YmirServiceProvider::class);
 
         $this->assertFalse($this->app->bound(Worker::class));
+    }
+
+    public function testDoesNotShareRequestContextWhenHeaderIsMissing(): void
+    {
+        if (!method_exists(LogManager::class, 'shareContext')) {
+            $this->markTestSkipped('LogManager::shareContext is not available in this version of Laravel.');
+        }
+
+        Config::set('ymir.logging.request_context', true);
+
+        $logManager = $this->mock(LogManager::class);
+        $logManager->shouldNotReceive('shareContext');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $request = Request::create('/', 'GET');
+
+        $this->app->instance('request', $request);
+    }
+
+    public function testDoesNotShareRequestContextWhenShareContextMethodIsMissing(): void
+    {
+        Config::set('ymir.logging.request_context', true);
+
+        // We bind a class that doesn't have the shareContext method
+        $this->app->instance(LogManager::class, new \stdClass());
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $request = Request::create('/', 'GET');
+        $request->headers->set('X-Request-ID', 'test-request-id');
+
+        $this->app->instance('request', $request);
+
+        $this->assertTrue(true); // If we reached here without error, the test passed
     }
 
     public function testOverridesRedisClientConfigurationOptionsWhenInYmirEnvironment(): void

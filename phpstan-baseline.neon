@@ -127,6 +127,12 @@ parameters:
 			path: src/Queue/Worker.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Foundation\\Application\:\:rebinding\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/YmirServiceProvider.php
+
+		-
 			message: '#^Cannot access offset ''Illuminate\\\\Contracts\\\\Debug\\\\ExceptionHandler'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1

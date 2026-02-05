@@ -23,6 +23,20 @@ Install the Ymir Laravel Bridge in your project using composer:
 $ composer require ymirapp/laravel-bridge
 ```
 
+## Configuration
+
+If you want to customize the Ymir Laravel Bridge, you can publish the configuration file using:
+
+```console
+$ php artisan vendor:publish --tag=ymir-config
+```
+
+Most configuration options can also be controlled using environment variables. For example, to enable request context logging:
+
+```
+YMIR_LOG_REQUEST_CONTEXT=true
+```
+
 ## Contributing
 
 Install dependencies using composer:

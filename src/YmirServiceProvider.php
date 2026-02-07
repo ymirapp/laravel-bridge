@@ -28,6 +28,11 @@ use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 class YmirServiceProvider extends ServiceProvider
 {
     /**
+     * The storage path for in the Lambda runtime.
+     */
+    private const STORAGE_PATH = '/tmp/storage';
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
@@ -134,10 +139,10 @@ class YmirServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->app->useStoragePath(StorageDirectories::PATH);
+        $this->app->useStoragePath(self::STORAGE_PATH);
 
-        Config::set('view.compiled', StorageDirectories::PATH.'/framework/views');
-        Config::set('cache.stores.file.path', StorageDirectories::PATH.'/framework/cache');
+        Config::set('view.compiled', self::STORAGE_PATH.'/framework/views');
+        Config::set('cache.stores.file.path', self::STORAGE_PATH.'/framework/cache');
     }
 
     /**

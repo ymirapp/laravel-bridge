@@ -70,6 +70,12 @@ class QueueWorkCommand extends Command
         $connectionName = $this->option('connection');
         $message = $this->option('message');
 
+        if (empty($connectionName) || !is_string($connectionName)) {
+            $this->error('The "--connection" option must be a string');
+
+            return self::FAILURE;
+        }
+
         if (empty($message) || !is_string($message)) {
             $this->error('The "--message" option is required');
 
@@ -103,10 +109,26 @@ class QueueWorkCommand extends Command
         $this->worker->runSqsJob(
             new SqsJob($this->laravel, $connection->getSqs(), $this->normalizeMessage($message), $connectionName, $queueUrl),
             $connectionName,
-            $this->gatherWorkerOptions()
+            $this->createWorkerOptions()
         );
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Create the queue worker options object.
+     */
+    protected function createWorkerOptions(): WorkerOptions
+    {
+        $delay = (int) $this->option('delay');
+        $memory = 0;
+        $timeout = (int) $this->option('timeout');
+        $sleep = 0;
+        $tries = (int) $this->option('tries');
+        $force = (bool) $this->option('force');
+        $stopWhenEmpty = false;
+
+        return new WorkerOptions('default', $delay, $memory, $timeout, $sleep, $tries, $force, $stopWhenEmpty);
     }
 
     /**
@@ -123,28 +145,6 @@ class QueueWorkCommand extends Command
         $message = json_decode($message, true);
 
         return is_array($message) ? $message : null;
-    }
-
-    /**
-     * Gather all the queue worker options as a single object.
-     */
-    protected function gatherWorkerOptions(): WorkerOptions
-    {
-        $options = [
-            $this->option('delay'),
-            $memory = 0,
-            $this->option('timeout'),
-            $sleep = 0,
-            $this->option('tries'),
-            $this->option('force'),
-            $stopWhenEmpty = false,
-        ];
-
-        if (property_exists(WorkerOptions::class, 'name')) {
-            $options = array_merge(['default'], $options);
-        }
-
-        return new WorkerOptions(...$options);
     }
 
     /**

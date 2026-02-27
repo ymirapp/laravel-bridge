@@ -16,6 +16,7 @@ namespace Ymir\Bridge\Laravel\Tests\Integration\Console\Commands;
 use Aws\Sqs\SqsClient;
 use Illuminate\Queue\Connectors\ConnectorInterface;
 use Illuminate\Queue\SqsQueue;
+use Illuminate\Queue\WorkerOptions;
 use Ymir\Bridge\Laravel\Queue\SqsJob;
 use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Laravel\Tests\TestCase;
@@ -118,7 +119,14 @@ class QueueWorkCommandTest extends TestCase
                ->with(
                    \Mockery::type(SqsJob::class),
                    'sqs',
-                   \Mockery::any()
+                   \Mockery::on(function (WorkerOptions $options): bool {
+                       $this->assertIsInt($options->backoff);
+                       $this->assertIsInt($options->timeout);
+                       $this->assertIsInt($options->maxTries);
+                       $this->assertIsBool($options->force);
+
+                       return true;
+                   })
                );
 
         $this->app->instance(Worker::class, $worker);

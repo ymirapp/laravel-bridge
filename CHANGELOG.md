@@ -17,11 +17,6 @@
 
 * Cast `ymir:queue:work` options to native types ([177d15e](https://github.com/ymirapp/laravel-bridge/commit/177d15e6dba44fddede78ff8138858848984668a))
 
-
-### Miscellaneous
-
-* Prepare 1.0.0 release ([e07f207](https://github.com/ymirapp/laravel-bridge/commit/e07f2077db4185bab15cc789c5a5c98b051ab79c))
-
 ## [0.2.0](https://github.com/ymirapp/laravel-bridge/compare/v0.1.0...v0.2.0) (2025-05-04)
 
 

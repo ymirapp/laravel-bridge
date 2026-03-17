@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/ymirapp/laravel-bridge/compare/v1.0.0...v1.1.0) (2026-03-17)
+
+
+### Features
+
+* Add Laravel 13 support ([1970728](https://github.com/ymirapp/laravel-bridge/commit/19707280c229f757f3f210643899a251d9cd94e7))
+
 ## [1.0.0](https://github.com/ymirapp/laravel-bridge/compare/v0.2.0...v1.0.0) (2026-03-04)
 
 

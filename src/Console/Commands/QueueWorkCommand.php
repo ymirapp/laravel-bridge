@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Config;
 use Ymir\Bridge\Laravel\Queue\SqsJob;
 use Ymir\Bridge\Laravel\Queue\Worker;
 
+/**
+ * Command that processes an SQS message record sent by the Ymir runtime.
+ */
 class QueueWorkCommand extends Command
 {
     /**
@@ -31,6 +34,7 @@ class QueueWorkCommand extends Command
      * Indicates whether the command should be shown in the Artisan command list.
      */
     protected $hidden = true;
+
     /**
      * The console command name.
      */
@@ -44,10 +48,8 @@ class QueueWorkCommand extends Command
 
     /**
      * The queue worker instance.
-     *
-     * @var Worker
      */
-    protected $worker;
+    protected Worker $worker;
 
     /**
      * Constructor.

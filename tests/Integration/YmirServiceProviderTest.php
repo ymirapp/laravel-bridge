@@ -27,16 +27,35 @@ use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
 class YmirServiceProviderTest extends TestCase
 {
+    private const ENVIRONMENT = [
+        'AWS_ACCESS_KEY_ID' => 'ACCESS_KEY',
+        'AWS_SESSION_TOKEN' => 'SESSION_TOKEN',
+        'LAMBDA_TASK_ROOT' => '/var/task',
+        'YMIR_ASSETS_URL' => 'https://assets.example.com',
+        'YMIR_CACHE_TABLE' => 'cache',
+        'YMIR_ENVIRONMENT' => 'testing',
+    ];
+
+    private array $previousEnvironment = [];
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        putenv('AWS_ACCESS_KEY_ID=ACCESS_KEY');
-        putenv('AWS_SESSION_TOKEN=SESSION_TOKEN');
-        putenv('LAMBDA_TASK_ROOT=/var/task');
-        putenv('YMIR_ASSETS_URL=https://assets.example.com');
-        putenv('YMIR_CACHE_TABLE=cache');
-        putenv('YMIR_ENVIRONMENT=testing');
+        foreach (self::ENVIRONMENT as $name => $value) {
+            $this->previousEnvironment[$name] = getenv($name);
+
+            putenv(sprintf('%s=%s', $name, $value));
+        }
+    }
+
+    protected function tearDown(): void
+    {
+        foreach ($this->previousEnvironment as $name => $value) {
+            putenv(false === $value ? $name : sprintf('%s=%s', $name, $value));
+        }
+
+        parent::tearDown();
     }
 
     public function testAddsAwsSessionTokenToDynamoDbCacheUsingLambdaAccessKey(): void
@@ -568,9 +587,10 @@ class YmirServiceProviderTest extends TestCase
 
     public function testDoesNotShareRequestContextWhenShareContextMethodIsMissing(): void
     {
+        $this->expectNotToPerformAssertions();
+
         Config::set('ymir.logging.request_context', true);
 
-        // We bind a class that doesn't have the shareContext method
         $this->app->instance(LogManager::class, new \stdClass());
 
         $this->app->register(YmirServiceProvider::class);
@@ -579,8 +599,6 @@ class YmirServiceProviderTest extends TestCase
         $request->headers->set('X-Request-ID', 'test-request-id');
 
         $this->app->instance('request', $request);
-
-        $this->assertTrue(true); // If we reached here without error, the test passed
     }
 
     public function testOverridesRedisClientConfigurationOptionsWhenInYmirEnvironment(): void

@@ -21,6 +21,9 @@ use Illuminate\Queue\Jobs\SqsJob as LaravelSqsJob;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
+/**
+ * SQS job that tracks attempts across releases.
+ */
 class SqsJob extends LaravelSqsJob
 {
     /**
@@ -33,7 +36,7 @@ class SqsJob extends LaravelSqsJob
     /**
      * Constructor.
      */
-    public function __construct(Container $container, SqsClient $sqs, array $job, $connectionName, $queue, array $overflowStorage = [])
+    public function __construct(Container $container, SqsClient $sqs, array $job, string $connectionName, string $queue, array $overflowStorage = [])
     {
         parent::__construct($container, $sqs, $job, $connectionName, $queue);
 

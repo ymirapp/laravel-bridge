@@ -19,7 +19,7 @@ use Ymir\Bridge\Laravel\Queue\Worker;
 
 class QueueWorkCommandTest extends TestCase
 {
-    public function testNormalizeMessageReturnsCorrectArray(): void
+    public function testNormalizeMessageConvertsLambdaRecordKeysToSqsMessageKeys(): void
     {
         $command = new QueueWorkCommand(\Mockery::mock(Worker::class));
 
@@ -46,7 +46,17 @@ class QueueWorkCommandTest extends TestCase
         $this->assertEquals($expected, $method->invoke($command, $message));
     }
 
-    public function testResolveQueueUrlReturnsCorrectUrl(): void
+    public function testResolveQueueUrlReturnsNullIfEventSourceArnIsMalformed(): void
+    {
+        $this->assertQueueUrlIsNotResolved(['eventSourceARN' => 'invalid-arn']);
+    }
+
+    public function testResolveQueueUrlReturnsNullIfEventSourceArnIsMissing(): void
+    {
+        $this->assertQueueUrlIsNotResolved([]);
+    }
+
+    public function testResolveQueueUrlReturnsUrlFromEventSourceArn(): void
     {
         $command = new QueueWorkCommand(\Mockery::mock(Worker::class));
 
@@ -60,7 +70,7 @@ class QueueWorkCommandTest extends TestCase
         $this->assertEquals($expected, $method->invoke($command, $message));
     }
 
-    public function testResolveQueueUrlReturnsNullIfArnIsInvalid(): void
+    private function assertQueueUrlIsNotResolved(array $message): void
     {
         $command = new QueueWorkCommand(\Mockery::mock(Worker::class));
 
@@ -68,7 +78,6 @@ class QueueWorkCommandTest extends TestCase
         $method = $reflection->getMethod('resolveQueueUrl');
         $method->setAccessible(true);
 
-        $this->assertNull($method->invoke($command, []));
-        $this->assertNull($method->invoke($command, ['eventSourceARN' => 'invalid-arn']));
+        $this->assertNull($method->invoke($command, $message));
     }
 }

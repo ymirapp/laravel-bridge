@@ -58,6 +58,27 @@ class SqsJobTest extends TestCase
         $this->assertEquals(1, $job->attempts());
     }
 
+    public function testReleaseDeletesMessageAndSendsItWithUpdatedAttemptsAndDelay(): void
+    {
+        $sqs = \Mockery::mock(SqsClient::class);
+        $sqs->shouldReceive('deleteMessage')
+            ->once()
+            ->with([
+                'QueueUrl' => 'test-queue',
+                'ReceiptHandle' => 'test-handle',
+            ]);
+
+        $sqs->shouldReceive('sendMessage')
+            ->once()
+            ->with(\Mockery::on(fn ($message): bool => 'test-queue' === $message['QueueUrl']
+                && 60 === $message['DelaySeconds']
+                && 5 === json_decode($message['MessageBody'], true)['attempts']));
+
+        $job = $this->createJob(['attempts' => 2], 'test-queue', $sqs, ['ApproximateReceiveCount' => 3]);
+
+        $job->release(60);
+    }
+
     public function testReleaseDoesNotDeleteOriginalMessageIfOverflowStoreIsNotCacheRepository(): void
     {
         $this->skipUnlessOverflowIsSupported();
@@ -200,27 +221,6 @@ class SqsJobTest extends TestCase
         ])->release(60);
     }
 
-    public function testReleaseSendsCorrectMessageToSqs(): void
-    {
-        $sqs = \Mockery::mock(SqsClient::class);
-        $sqs->shouldReceive('deleteMessage')
-            ->once()
-            ->with([
-                'QueueUrl' => 'test-queue',
-                'ReceiptHandle' => 'test-handle',
-            ]);
-
-        $sqs->shouldReceive('sendMessage')
-            ->once()
-            ->with(\Mockery::on(fn ($message): bool => 'test-queue' === $message['QueueUrl']
-                && 60 === $message['DelaySeconds']
-                && 5 === json_decode($message['MessageBody'], true)['attempts']));
-
-        $job = $this->createJob(['attempts' => 2], 'test-queue', $sqs, ['ApproximateReceiveCount' => 3]);
-
-        $job->release(60);
-    }
-
     public function testReleaseStoresUpdatedPayloadAtExistingOverflowPointerBeforeDeletingMessage(): void
     {
         $this->skipUnlessOverflowIsSupported();
@@ -274,12 +274,12 @@ class SqsJobTest extends TestCase
         $this->createOverflowJob($store, $sqs, 'test-queue', [], $pointer)->release(60);
     }
 
-    private function createJob($payload, string $queue = 'test-queue', $sqs = null, array $attributes = []): SqsJob
+    private function createJob(array $payload, string $queue = 'test-queue', ?SqsClient $sqs = null, array $attributes = []): SqsJob
     {
         $container = \Mockery::mock(Container::class);
         $sqs = $sqs ?: \Mockery::mock(SqsClient::class);
 
-        $payload = is_array($payload) && isset($payload['Body']) ? $payload : [
+        $payload = isset($payload['Body']) ? $payload : [
             'Body' => json_encode($payload),
             'ReceiptHandle' => 'test-handle',
             'Attributes' => $attributes,

@@ -33,10 +33,7 @@ class SqsConnectorTest extends TestCase
 
         $queue = $connector->connect($config);
 
-        $reflection = new \ReflectionClass($queue);
-        $sqsProperty = $reflection->getParentClass()->getProperty('sqs');
-        $sqsProperty->setAccessible(true);
-        $sqs = $sqsProperty->getValue($queue);
+        $sqs = $queue->getSqs();
 
         $this->assertEquals('test-key', $sqs->getCredentials()->wait()->getAccessKeyId());
         $this->assertEquals('test-secret', $sqs->getCredentials()->wait()->getSecretKey());
@@ -59,7 +56,7 @@ class SqsConnectorTest extends TestCase
 
     public function testConnectThrowsExceptionIfOverflowStorageIsNotAnArray(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\UnexpectedValueException::class);
         $this->expectExceptionMessage('The SQS "overflow" configuration must be an array');
 
         $connector = new SqsConnector();
@@ -82,10 +79,7 @@ class SqsConnectorTest extends TestCase
 
         $queue = $connector->connect($config);
 
-        $reflection = new \ReflectionClass($queue);
-        $sqsProperty = $reflection->getParentClass()->getProperty('sqs');
-        $sqsProperty->setAccessible(true);
-        $sqs = $sqsProperty->getValue($queue);
+        $sqs = $queue->getSqs();
 
         $this->assertEquals('2012-11-05', $sqs->getApi()->getApiVersion());
     }

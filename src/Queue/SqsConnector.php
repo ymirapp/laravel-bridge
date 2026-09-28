@@ -17,14 +17,44 @@ use Aws\Sqs\SqsClient;
 use Illuminate\Queue\Connectors\ConnectorInterface;
 use Illuminate\Support\Arr;
 
+/**
+ * Connector that creates the Ymir SQS queue.
+ */
 class SqsConnector implements ConnectorInterface
 {
+    /**
+     * The configuration key for dispatching jobs after database transactions commit.
+     */
     private const AFTER_COMMIT_KEY = 'after_commit';
+
+    /**
+     * The configuration keys used to build the AWS credentials.
+     */
     private const CREDENTIAL_KEYS = ['key', 'secret', 'token'];
+
+    /**
+     * The configuration key for the large payload overflow storage options.
+     */
     private const OVERFLOW_KEY = 'overflow';
+
+    /**
+     * The configuration key for the queue URL prefix.
+     */
     private const PREFIX_KEY = 'prefix';
+
+    /**
+     * The configuration key for the default queue name.
+     */
     private const QUEUE_KEY = 'queue';
+
+    /**
+     * The queue configuration keys that aren't passed to the SQS client.
+     */
     private const QUEUE_KEYS = ['driver', self::QUEUE_KEY, self::PREFIX_KEY, self::SUFFIX_KEY, self::AFTER_COMMIT_KEY, self::OVERFLOW_KEY, 'credential_cache'];
+
+    /**
+     * The configuration key for the queue name suffix.
+     */
     private const SUFFIX_KEY = 'suffix';
 
     /**
@@ -36,7 +66,7 @@ class SqsConnector implements ConnectorInterface
         $overflowStorage = $config[self::OVERFLOW_KEY] ?? [];
 
         if (!is_array($overflowStorage)) {
-            throw new \InvalidArgumentException('The SQS "overflow" configuration must be an array');
+            throw new \UnexpectedValueException('The SQS "overflow" configuration must be an array');
         }
 
         if (!empty($config['key']) && !empty($config['secret'])) {

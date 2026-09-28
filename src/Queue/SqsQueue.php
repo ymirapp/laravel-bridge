@@ -21,8 +21,16 @@ use Illuminate\Queue\SqsQueue as LaravelSqsQueue;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
+/**
+ * SQS queue that resolves queue URLs from the Ymir environment.
+ */
 class SqsQueue extends LaravelSqsQueue
 {
+    /**
+     * The cache key prefix for overflow payload pointers.
+     *
+     * Matches Laravel's "EXTENDED_PAYLOAD_CACHE_PREFIX" constant, which older supported Laravel versions don't define.
+     */
     private const OVERFLOW_POINTER_PREFIX = 'laravel:sqs-payloads:';
 
     /**

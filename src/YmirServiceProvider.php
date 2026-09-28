@@ -25,10 +25,27 @@ use Ymir\Bridge\Laravel\Queue\SqsConnector;
 use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
 
+/**
+ * Service provider that adapts Laravel applications to the Ymir Lambda environment.
+ */
 class YmirServiceProvider extends ServiceProvider
 {
     /**
-     * The storage path for in the Lambda runtime.
+     * The DynamoDB driver name.
+     */
+    private const DYNAMODB_DRIVER = 'dynamodb';
+
+    /**
+     * The AWS service drivers that accept the Lambda session token, keyed by their configuration path.
+     */
+    private const SESSION_TOKEN_DRIVERS = [
+        'cache.stores' => self::DYNAMODB_DRIVER,
+        'filesystems.disks' => 's3',
+        'queue.connections' => 'sqs',
+    ];
+
+    /**
+     * The storage path in the Lambda runtime.
      */
     private const STORAGE_PATH = '/tmp/storage';
 
@@ -94,26 +111,15 @@ class YmirServiceProvider extends ServiceProvider
             return;
         }
 
-        collect((array) Config::get('cache.stores'))
-            ->filter(fn ($store): bool => is_array($store) && isset($store['driver'], $store['key']) && 'dynamodb' === $store['driver'] && $credentials['key'] === $store['key'])
-            ->each(function ($store, $name) use ($credentials): void {
-                Config::set("cache.stores.{$name}.token", $credentials['token']);
-            });
+        collect(self::SESSION_TOKEN_DRIVERS)->each(function (string $driver, string $path) use ($credentials): void {
+            collect((array) Config::get($path))
+                ->filter(fn ($config): bool => $this->usesAccessKey((array) $config, $driver, $credentials['key']))
+                ->each(function ($config, $name) use ($path, $credentials): void {
+                    Config::set("{$path}.{$name}.token", $credentials['token']);
+                });
+        });
 
-        collect((array) Config::get('filesystems.disks'))
-            ->filter(fn ($disk): bool => is_array($disk) && isset($disk['driver'], $disk['key']) && 's3' === $disk['driver'] && $credentials['key'] === $disk['key'])
-            ->each(function ($disk, $name) use ($credentials): void {
-                Config::set("filesystems.disks.{$name}.token", $credentials['token']);
-            });
-
-        collect((array) Config::get('queue.connections'))
-            ->filter(fn ($connection): bool => is_array($connection) && isset($connection['driver'], $connection['key']) && 'sqs' === $connection['driver'] && $credentials['key'] === $connection['key'])
-            ->each(function ($connection, $name) use ($credentials): void {
-                Config::set("queue.connections.{$name}.token", $credentials['token']);
-            });
-
-        $queueFailedConfig = Config::get('queue.failed');
-        if (is_array($queueFailedConfig) && isset($queueFailedConfig['driver'], $queueFailedConfig['key']) && 'dynamodb' === $queueFailedConfig['driver'] && $credentials['key'] === $queueFailedConfig['key']) {
+        if ($this->usesAccessKey((array) Config::get('queue.failed'), self::DYNAMODB_DRIVER, $credentials['key'])) {
             Config::set('queue.failed.token', $credentials['token']);
         }
 
@@ -230,7 +236,7 @@ class YmirServiceProvider extends ServiceProvider
 
         if (!Config::get('cache.stores.dynamodb')) {
             Config::set('cache.stores.dynamodb', array_merge([
-                'driver' => 'dynamodb',
+                'driver' => self::DYNAMODB_DRIVER,
                 'table' => $table,
             ], $this->getAwsCredentials()));
         }
@@ -293,5 +299,13 @@ class YmirServiceProvider extends ServiceProvider
     protected function runningOnYmir(): bool
     {
         return getenv('LAMBDA_TASK_ROOT') && getenv('YMIR_ENVIRONMENT');
+    }
+
+    /**
+     * Check if the given service configuration uses the given driver with the given access key.
+     */
+    private function usesAccessKey(array $config, string $driver, string $key): bool
+    {
+        return isset($config['driver'], $config['key']) && $driver === $config['driver'] && $key === $config['key'];
     }
 }

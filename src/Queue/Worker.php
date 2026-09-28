@@ -17,6 +17,9 @@ use Illuminate\Container\Container;
 use Illuminate\Queue\Worker as LaravelQueueWorker;
 use Illuminate\Queue\WorkerOptions;
 
+/**
+ * Queue worker that processes a single SQS job per Lambda invocation.
+ */
 class Worker extends LaravelQueueWorker
 {
     /**
@@ -24,10 +27,10 @@ class Worker extends LaravelQueueWorker
      */
     public function runSqsJob(SqsJob $job, string $connectionName, WorkerOptions $options): void
     {
-        if (property_exists($this, 'resetScope') && isset($this->resetScope)) {
-            ($this->resetScope)();
-        } elseif (!property_exists($this, 'resetScope')) {
+        if (!property_exists($this, 'resetScope')) {
             Container::getInstance()->forgetScopedInstances();
+        } elseif (isset($this->resetScope)) {
+            ($this->resetScope)();
         }
 
         pcntl_async_signals(true);

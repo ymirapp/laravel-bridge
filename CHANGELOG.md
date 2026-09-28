@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/ymirapp/laravel-bridge/compare/v1.1.0...v1.2.0) (2026-09-28)
+
+
+### Features
+
+* Support laravel 13 sqs payload overflow ([910793f](https://github.com/ymirapp/laravel-bridge/commit/910793f5f676ea9f3199280ad7f6cdd19fb0bbfe))
+
+
+### Bug Fixes
+
+* Handle non-string event source ARN in queue work command ([712f712](https://github.com/ymirapp/laravel-bridge/commit/712f7129ab436bc510f867adab0295132a17c926))
+
 ## [1.1.0](https://github.com/ymirapp/laravel-bridge/compare/v1.0.0...v1.1.0) (2026-03-17)
 
 

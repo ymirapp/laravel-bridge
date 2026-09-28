@@ -177,7 +177,7 @@ class QueueWorkCommand extends Command
      */
     protected function resolveQueueUrl(array $message): ?string
     {
-        if (empty($message['eventSourceARN'])) {
+        if (empty($message['eventSourceARN']) || !is_string($message['eventSourceARN'])) {
             return null;
         }
 

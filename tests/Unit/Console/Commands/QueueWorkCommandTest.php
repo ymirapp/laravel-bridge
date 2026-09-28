@@ -56,6 +56,11 @@ class QueueWorkCommandTest extends TestCase
         $this->assertQueueUrlIsNotResolved([]);
     }
 
+    public function testResolveQueueUrlReturnsNullIfEventSourceArnIsNotAString(): void
+    {
+        $this->assertQueueUrlIsNotResolved(['eventSourceARN' => ['arn:aws:sqs:us-east-1:123456789012:queue-name']]);
+    }
+
     public function testResolveQueueUrlReturnsUrlFromEventSourceArn(): void
     {
         $command = new QueueWorkCommand(\Mockery::mock(Worker::class));

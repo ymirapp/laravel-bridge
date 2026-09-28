@@ -16,6 +16,7 @@ namespace Ymir\Bridge\Laravel\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Queue\SqsQueue;
 use Illuminate\Queue\WorkerOptions;
+use Illuminate\Support\Facades\Config;
 use Ymir\Bridge\Laravel\Queue\SqsJob;
 use Ymir\Bridge\Laravel\Queue\Worker;
 
@@ -90,6 +91,14 @@ class QueueWorkCommand extends Command
             return self::FAILURE;
         }
 
+        $overflowStorage = Config::get("queue.connections.{$connectionName}.overflow") ?? [];
+
+        if (!is_array($overflowStorage)) {
+            $this->error(sprintf('The "overflow" configuration for connection [%s] must be an array', $connectionName));
+
+            return self::FAILURE;
+        }
+
         $connection = $this->laravel['queue']->connection($connectionName);
 
         if (!$connection instanceof SqsQueue) {
@@ -107,7 +116,7 @@ class QueueWorkCommand extends Command
         }
 
         $this->worker->runSqsJob(
-            new SqsJob($this->laravel, $connection->getSqs(), $this->normalizeMessage($message), $connectionName, $queueUrl),
+            new SqsJob($this->laravel, $connection->getSqs(), $this->normalizeMessage($message), $connectionName, $queueUrl, $overflowStorage),
             $connectionName,
             $this->createWorkerOptions()
         );

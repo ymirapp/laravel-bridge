@@ -64,6 +64,21 @@ class QueueWorkCommandTest extends TestCase
              ->expectsOutput('The "--message" option is required');
     }
 
+    public function testHandleFailsIfOverflowConfigurationIsNotAnArray(): void
+    {
+        $connector = $this->createMock(ConnectorInterface::class);
+        $connector->expects($this->never())->method('connect');
+
+        $this->app['queue']->extend('sqs', fn (): ConnectorInterface => $connector);
+
+        $this->app['config']->set('queue.connections.sqs', ['driver' => 'sqs', 'overflow' => []]);
+        $this->app['config']->set('queue.connections.custom', ['driver' => 'sqs', 'overflow' => 'invalid']);
+
+        $this->artisan('ymir:queue:work', ['--connection' => 'custom', '--message' => base64_encode(json_encode(['foo' => 'bar']))])
+             ->assertExitCode(1)
+             ->expectsOutput('The "overflow" configuration for connection [custom] must be an array');
+    }
+
     public function testHandleFailsIfQueueUrlCannotBeResolved(): void
     {
         $sqs = \Mockery::mock(SqsClient::class);
@@ -89,6 +104,16 @@ class QueueWorkCommandTest extends TestCase
 
     public function testHandleRunsWorkerWithSqsJob(): void
     {
+        $this->runWorkerWithConnectionConfiguration(['driver' => 'sqs']);
+    }
+
+    public function testHandleRunsWorkerWithSqsJobIfOverflowConfigurationIsNull(): void
+    {
+        $this->runWorkerWithConnectionConfiguration(['driver' => 'sqs', 'overflow' => null]);
+    }
+
+    private function runWorkerWithConnectionConfiguration(array $configuration): void
+    {
         $sqs = \Mockery::mock(SqsClient::class);
         $queue = \Mockery::mock(SqsQueue::class);
         $queue->shouldReceive('getSqs')->andReturn($sqs);
@@ -101,7 +126,7 @@ class QueueWorkCommandTest extends TestCase
 
         $this->app['queue']->extend('sqs', fn () => $connector);
 
-        $this->app['config']->set('queue.connections.sqs', ['driver' => 'sqs']);
+        $this->app['config']->set('queue.connections.sqs', $configuration);
 
         $messageData = [
             'messageId' => 'id',

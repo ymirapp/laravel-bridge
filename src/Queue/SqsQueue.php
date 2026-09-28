@@ -14,11 +14,24 @@ declare(strict_types=1);
 namespace Ymir\Bridge\Laravel\Queue;
 
 use Aws\Sqs\SqsClient;
+use Illuminate\Cache\DynamoDbStore;
+use Illuminate\Contracts\Cache\Factory;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Queue\SqsQueue as LaravelSqsQueue;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class SqsQueue extends LaravelSqsQueue
 {
+    private const OVERFLOW_POINTER_PREFIX = 'laravel:sqs-payloads:';
+
+    /**
+     * The overflow storage options for large payload offloading.
+     *
+     * @var array
+     */
+    protected $overflowStorage = [];
+
     /**
      * The queue name suffix.
      *
@@ -29,11 +42,12 @@ class SqsQueue extends LaravelSqsQueue
     /**
      * Constructor.
      */
-    public function __construct(SqsClient $sqs, $default, $prefix = '', $suffix = '', $dispatchAfterCommit = false)
+    public function __construct(SqsClient $sqs, $default, $prefix = '', $suffix = '', $dispatchAfterCommit = false, array $overflowStorage = [])
     {
         parent::__construct($sqs, $default, $prefix, $suffix, $dispatchAfterCommit);
 
         $this->suffix = $suffix;
+        $this->overflowStorage = $overflowStorage;
     }
 
     /**
@@ -64,6 +78,44 @@ class SqsQueue extends LaravelSqsQueue
         return array_merge(parent::createPayloadArray($job, $queue, $data), [
             'attempts' => 0,
         ]);
+    }
+
+    /**
+     * Store the payload in overflow storage and return a pointer payload, failing if the payload cannot be stored.
+     *
+     * @param string $payload
+     */
+    protected function overflow($payload): string
+    {
+        $cache = $this->container->make('cache');
+        $storeName = Arr::get($this->overflowStorage, 'store');
+
+        if (!$cache instanceof Factory) {
+            throw new \UnexpectedValueException('The "cache" container binding must be a cache factory');
+        }
+
+        if (null !== $storeName && !is_string($storeName)) {
+            throw new \UnexpectedValueException('The overflow "store" option must be a string');
+        }
+
+        $store = $cache->store($storeName);
+
+        if (!$store instanceof Repository) {
+            throw new \UnexpectedValueException('The overflow storage must be a cache repository');
+        }
+
+        if ($store->getStore() instanceof DynamoDbStore) {
+            throw new \UnexpectedValueException(sprintf('Unable to store the job payload in overflow storage for queue connection [%s] because it uses the DynamoDB cache driver, which limits items to 400 KB. Set the connection "overflow.store" option to a Redis or Valkey cache store, or another shared cache store that supports large payloads.', $this->getConnectionName()));
+        }
+
+        $uuid = Arr::get((array) json_decode($payload, true), 'uuid');
+        $pointer = self::OVERFLOW_POINTER_PREFIX.(is_scalar($uuid) ? (string) $uuid : Str::uuid());
+
+        if (!$store->put($pointer, $payload)) {
+            throw new \RuntimeException(sprintf('Unable to store the job payload in overflow storage [%s]', $pointer));
+        }
+
+        return json_encode(['@pointer' => $pointer], JSON_THROW_ON_ERROR);
     }
 
     /**

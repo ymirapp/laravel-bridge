@@ -57,6 +57,20 @@ class SqsConnectorTest extends TestCase
         $this->assertInstanceOf(SqsQueue::class, $queue);
     }
 
+    public function testConnectThrowsExceptionIfOverflowStorageIsNotAnArray(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The SQS "overflow" configuration must be an array');
+
+        $connector = new SqsConnector();
+
+        $connector->connect([
+            'region' => 'us-east-1',
+            'queue' => 'test-queue',
+            'overflow' => 'redis',
+        ]);
+    }
+
     public function testConnectUsesDefaultConfiguration(): void
     {
         $connector = new SqsConnector();

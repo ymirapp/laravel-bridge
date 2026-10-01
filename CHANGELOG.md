@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.0](https://github.com/ymirapp/laravel-bridge/compare/v1.1.0...v1.2.0) (2026-09-28)
+## [1.2.0](https://github.com/ymirapp/laravel-bridge/compare/v1.1.0...v1.2.0) (2026-10-01)
 
 
 ### Features

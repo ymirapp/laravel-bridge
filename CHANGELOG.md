@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/ymirapp/laravel-bridge/compare/v1.2.0...v1.3.0) (2026-10-13)
+
+
+### Features
+
+* Add private Laravel health endpoint ([ccb58c0](https://github.com/ymirapp/laravel-bridge/commit/ccb58c0f04bb3900ff0c8c2dc24c6262846dd0dc))
+
 ## [1.2.0](https://github.com/ymirapp/laravel-bridge/compare/v1.1.0...v1.2.0) (2026-10-01)
 
 

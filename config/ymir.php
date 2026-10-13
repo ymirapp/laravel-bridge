@@ -4,6 +4,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Health Options
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure the Ymir health endpoint. These settings let you
+    | check that your application boots and passes its diagnostics.
+    |
+    */
+
+    'health' => [
+
+        /*
+        |----------------------------------------------------------------------
+        | Enabled
+        |----------------------------------------------------------------------
+        |
+        | This option determines if the "/ymir/health" endpoint is registered.
+        | Its action requires runtime health check metadata before running
+        | diagnostics and returns 404 otherwise, or 500 if a listener throws.
+        | Application routes and middleware retain control over requests.
+        |
+        */
+
+        'enabled' => env('YMIR_HEALTH_ENABLED', true),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Logging Options
     |--------------------------------------------------------------------------
     |

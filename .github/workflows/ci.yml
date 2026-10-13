@@ -27,7 +27,7 @@ jobs:
       - name: Run Rector
         run: composer rector
   php-tests:
-    name: Run tests on ${{ matrix.php }}${{ matrix.dependency-version != '' && ' (--prefer-lowest)' || '' }}
+    name: Run tests on ${{ matrix.php }}${{ matrix.laravel && format(' with Laravel {0}', matrix.laravel) || '' }}${{ matrix.dependency-version != '' && ' (--prefer-lowest)' || '' }}
     needs: code-quality
     runs-on: ubuntu-latest
     env:
@@ -36,10 +36,13 @@ jobs:
       fail-fast: false
       matrix:
         dependency-version: ['']
+        laravel: ['']
         php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
         include:
           - dependency-version: '--prefer-lowest'
             php: '7.4'
+          - laravel: '11.*'
+            php: '8.2'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,7 +53,7 @@ jobs:
       - name: Remove code quality dependencies
         run: composer remove --dev --no-security-blocking phpstan/phpstan rector/rector
       - name: Install dependencies
-        run: composer update ${{ matrix.dependency-version }} --no-ansi --no-interaction --no-scripts --no-security-blocking --prefer-dist
+        run: composer update ${{ matrix.dependency-version }} ${{ matrix.laravel && format('--with=laravel/framework:{0}', matrix.laravel) || '' }} --no-ansi --no-interaction --no-scripts --no-security-blocking --prefer-dist
       - name: Run unit tests
         run: composer tests:unit
       - name: Run integration tests

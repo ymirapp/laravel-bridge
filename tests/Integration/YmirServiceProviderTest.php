@@ -13,13 +13,20 @@ declare(strict_types=1);
 
 namespace Ymir\Bridge\Laravel\Tests\Integration;
 
+use Illuminate\Auth\GenericUser;
+use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
+use Illuminate\Foundation\Events\DiagnosingHealth as LaravelDiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
+use Illuminate\Routing\Route as LaravelRoute;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Orchestra\Testbench\TestCase;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
+use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
 use Ymir\Bridge\Laravel\Queue\SqsQueue;
 use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Laravel\YmirServiceProvider;
@@ -36,7 +43,11 @@ class YmirServiceProviderTest extends TestCase
         'YMIR_ENVIRONMENT' => 'testing',
     ];
 
+    private const HEALTH_CHECK_SERVER_VARIABLES = ['YMIR_HEALTH_CHECK' => '1'];
+
     private array $previousEnvironment = [];
+
+    private array $previousServerVariables = [];
 
     protected function setUp(): void
     {
@@ -53,6 +64,14 @@ class YmirServiceProviderTest extends TestCase
     {
         foreach ($this->previousEnvironment as $name => $value) {
             putenv(false === $value ? $name : sprintf('%s=%s', $name, $value));
+        }
+
+        foreach ($this->previousServerVariables as $name => $value) {
+            if (null === $value) {
+                unset($_SERVER[$name]);
+            } else {
+                $_SERVER[$name] = $value;
+            }
         }
 
         parent::tearDown();
@@ -529,6 +548,27 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame(['0.0.0.0/0'], Config::get('trustedproxy.proxies'));
     }
 
+    public function testDoesNotForwardNativeDiagnosingHealthWhenHealthEndpointIsDisabled(): void
+    {
+        if (!class_exists(LaravelDiagnosingHealth::class)) {
+            $this->markTestSkipped('The DiagnosingHealth event requires Laravel 11 or newer.');
+        }
+
+        Config::set('ymir.health.enabled', false);
+
+        $diagnostics = 0;
+
+        Event::listen(DiagnosingHealth::class, function () use (&$diagnostics): void {
+            ++$diagnostics;
+        });
+
+        $this->app->register(YmirServiceProvider::class);
+
+        Event::dispatch(new LaravelDiagnosingHealth());
+
+        $this->assertSame(0, $diagnostics);
+    }
+
     public function testDoesNotOverrideRedisClientConfigurationOptionsWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
@@ -549,6 +589,44 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('file', Config::get('session.driver'));
     }
 
+    public function testDoesNotRegisterHealthEndpointWhenDisabled(): void
+    {
+        Config::set('ymir.health.enabled', false);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(0, $this->countHealthEndpointRoutes());
+        $this->get('/ymir/health')->assertNotFound();
+    }
+
+    public function testDoesNotRegisterHealthEndpointWhenDisabledByEnvironmentVariable(): void
+    {
+        $this->setServerVariable('YMIR_HEALTH_ENABLED', 'false');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(0, $this->countHealthEndpointRoutes());
+    }
+
+    public function testDoesNotRegisterHealthEndpointWhenEnabledOptionIsFalseString(): void
+    {
+        Config::set('ymir.health.enabled', 'false');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(0, $this->countHealthEndpointRoutes());
+    }
+
+    public function testDoesNotRegisterHealthEndpointWhenEnabledOptionIsOffString(): void
+    {
+        Config::set('ymir.health.enabled', 'off');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(0, $this->countHealthEndpointRoutes());
+        $this->get('/ymir/health')->assertNotFound();
+    }
+
     public function testDoesNotRegisterQueueWorkCommandWhenNotInYmirEnvironment(): void
     {
         putenv('YMIR_ENVIRONMENT');
@@ -565,6 +643,29 @@ class YmirServiceProviderTest extends TestCase
         $this->app->register(YmirServiceProvider::class);
 
         $this->assertFalse($this->app->bound(Worker::class));
+    }
+
+    public function testDoesNotReplaceApplicationDomainHealthEndpointRouteRegisteredBeforeProvider(): void
+    {
+        Config::set('ymir.health.enabled', true);
+
+        $this->registerApplicationDomainHealthEndpointRoute();
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertApplicationDomainHealthEndpointRouteIsPreserved();
+    }
+
+    public function testDoesNotReplaceApplicationHealthEndpointRouteRegisteredBeforeProvider(): void
+    {
+        Config::set('ymir.health.enabled', true);
+
+        Route::get('ymir/health', fn (): string => 'application');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(1, $this->countHealthEndpointRoutes());
+        $this->get('/ymir/health')->assertOk()->assertSeeText('application');
     }
 
     public function testDoesNotShareRequestContextWhenHeaderIsMissing(): void
@@ -601,6 +702,27 @@ class YmirServiceProviderTest extends TestCase
         $this->app->instance('request', $request);
     }
 
+    public function testForwardsNativeDiagnosingHealthToPackageEventOnceWhenHealthEndpointIsEnabled(): void
+    {
+        if (!class_exists(LaravelDiagnosingHealth::class)) {
+            $this->markTestSkipped('The DiagnosingHealth event requires Laravel 11 or newer.');
+        }
+
+        Config::set('ymir.health.enabled', true);
+
+        $diagnostics = 0;
+
+        Event::listen(DiagnosingHealth::class, function () use (&$diagnostics): void {
+            ++$diagnostics;
+        });
+
+        $this->app->register(YmirServiceProvider::class);
+
+        Event::dispatch(new LaravelDiagnosingHealth());
+
+        $this->assertSame(1, $diagnostics);
+    }
+
     public function testOverridesRedisClientConfigurationOptionsWhenInYmirEnvironment(): void
     {
         Config::set('database.redis.client', 'not-relay');
@@ -619,6 +741,78 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('cookie', Config::get('session.driver'));
     }
 
+    public function testPreservesApplicationDomainHealthEndpointRouteRegisteredAfterProvider(): void
+    {
+        Config::set('ymir.health.enabled', true);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->registerApplicationDomainHealthEndpointRoute();
+
+        $this->assertApplicationDomainHealthEndpointRouteIsPreserved();
+    }
+
+    public function testPreservesApplicationHealthEndpointRouteRegisteredAfterProvider(): void
+    {
+        Config::set('ymir.health.enabled', true);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        Route::get('ymir/health', fn (): string => 'application');
+
+        $this->assertSame(1, $this->countHealthEndpointRoutes());
+        $this->get('/ymir/health')->assertOk()->assertSeeText('application');
+    }
+
+    public function testRegistersHealthEndpointAndDiagnosticsOnceWhenProviderIsRegisteredTwice(): void
+    {
+        Config::set('ymir.health.enabled', true);
+
+        $diagnostics = 0;
+
+        Event::listen(DiagnosingHealth::class, function () use (&$diagnostics): void {
+            ++$diagnostics;
+        });
+
+        $this->app->register(YmirServiceProvider::class);
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->withServerVariables(self::HEALTH_CHECK_SERVER_VARIABLES)->get('/ymir/health')->assertOk();
+
+        $this->assertSame(1, $this->countHealthEndpointRoutes());
+        $this->assertSame(1, $diagnostics);
+    }
+
+    public function testRegistersHealthEndpointByDefault(): void
+    {
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(1, $this->countHealthEndpointRoutes());
+        $this->get('/ymir/health')->assertNotFound();
+        $this->withServerVariables(self::HEALTH_CHECK_SERVER_VARIABLES)->get('/ymir/health')->assertOk()->assertExactJson(['status' => 'up']);
+    }
+
+    public function testRegistersHealthEndpointWhenEnabledOptionIsYesString(): void
+    {
+        Config::set('ymir.health.enabled', 'yes');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(1, $this->countHealthEndpointRoutes());
+        $this->withServerVariables(self::HEALTH_CHECK_SERVER_VARIABLES)->get('/ymir/health')->assertOk();
+    }
+
+    public function testRegistersHealthEndpointWhenEnabledOutsideYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+        Config::set('ymir.health.enabled', true);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(1, $this->countHealthEndpointRoutes());
+        $this->withServerVariables(self::HEALTH_CHECK_SERVER_VARIABLES)->get('/ymir/health')->assertOk()->assertExactJson(['status' => 'up']);
+    }
+
     public function testRegistersQueueWorkCommandWhenInYmirEnvironment(): void
     {
         $this->app->register(YmirServiceProvider::class);
@@ -633,6 +827,16 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertTrue($this->app->bound(Worker::class));
         $this->assertInstanceOf(Worker::class, $this->app->make(Worker::class));
+    }
+
+    public function testRejectsHealthEndpointEnabledOptionWhenValueIsAnArray(): void
+    {
+        $this->assertInvalidHealthEndpointEnabledOptionThrowsException([true]);
+    }
+
+    public function testRejectsHealthEndpointEnabledOptionWhenValueIsInvalidString(): void
+    {
+        $this->assertInvalidHealthEndpointEnabledOptionThrowsException('enabled');
     }
 
     public function testSqsQueueConnectionDoesNotUseYmirSqsQueueWhenNotInYmirEnvironment(): void
@@ -665,5 +869,50 @@ class YmirServiceProviderTest extends TestCase
         $this->app->register(YmirServiceProvider::class);
 
         $this->assertInstanceOf(SqsQueue::class, Queue::connection('sqs'));
+    }
+
+    private function assertApplicationDomainHealthEndpointRouteIsPreserved(): void
+    {
+        $this->withServerVariables(self::HEALTH_CHECK_SERVER_VARIABLES);
+
+        $this->get('http://admin.example.com/ymir/health')->assertStatus(401);
+        $this->get('http://www.example.com/ymir/health')->assertOk()->assertExactJson(['status' => 'up']);
+
+        $this->actingAs(new GenericUser(['id' => 1]));
+
+        $this->get('http://admin.example.com/ymir/health')->assertOk()->assertSeeText('application');
+    }
+
+    private function assertInvalidHealthEndpointEnabledOptionThrowsException($enabled): void
+    {
+        Config::set('ymir.health.enabled', $enabled);
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('The "ymir.health.enabled" configuration option must be a boolean value');
+
+        $this->app->register(YmirServiceProvider::class);
+    }
+
+    private function countHealthEndpointRoutes(): int
+    {
+        return collect($this->app->make('router')->getRoutes()->getRoutes())
+            ->filter(fn (LaravelRoute $route): bool => 'ymir/health' === $route->uri())
+            ->count();
+    }
+
+    private function registerApplicationDomainHealthEndpointRoute(): void
+    {
+        Route::domain('admin.example.com')
+            ->get('ymir/health', fn (): string => 'application')
+            ->middleware(AuthenticateWithBasicAuth::class);
+    }
+
+    private function setServerVariable(string $name, string $value): void
+    {
+        if (!array_key_exists($name, $this->previousServerVariables)) {
+            $this->previousServerVariables[$name] = $_SERVER[$name] ?? null;
+        }
+
+        $_SERVER[$name] = $value;
     }
 }

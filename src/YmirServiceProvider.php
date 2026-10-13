@@ -15,12 +15,18 @@ namespace Ymir\Bridge\Laravel;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Foundation\CachesRoutes;
+use Illuminate\Foundation\Events\DiagnosingHealth as LaravelDiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
+use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
+use Ymir\Bridge\Laravel\Http\Action\GetHealthAction;
 use Ymir\Bridge\Laravel\Queue\SqsConnector;
 use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Monolog\Formatter\CloudWatchFormatter;
@@ -34,6 +40,11 @@ class YmirServiceProvider extends ServiceProvider
      * The DynamoDB driver name.
      */
     private const DYNAMODB_DRIVER = 'dynamodb';
+
+    /**
+     * The URI of the Ymir health endpoint.
+     */
+    private const HEALTH_ENDPOINT_URI = 'ymir/health';
 
     /**
      * The AWS service drivers that accept the Lambda session token, keyed by their configuration path.
@@ -58,6 +69,10 @@ class YmirServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/ymir.php' => config_path('ymir.php'),
             ], 'ymir-config');
+        }
+
+        if ($this->healthEndpointEnabled()) {
+            $this->registerHealthEndpoint();
         }
 
         if (!$this->runningOnYmir()) {
@@ -258,6 +273,20 @@ class YmirServiceProvider extends ServiceProvider
     }
 
     /**
+     * Check if the health endpoint configuration option enables the health endpoint.
+     */
+    protected function healthEndpointEnabled(): bool
+    {
+        $enabled = filter_var(Config::get('ymir.health.enabled'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        if (!is_bool($enabled)) {
+            throw new \UnexpectedValueException('The "ymir.health.enabled" configuration option must be a boolean value');
+        }
+
+        return $enabled;
+    }
+
+    /**
      * Override Laravel configuration options that don't work with Ymir.
      */
     protected function overrideConfigurationOptions(): void
@@ -283,6 +312,30 @@ class YmirServiceProvider extends ServiceProvider
         $this->commands([
             QueueWorkCommand::class,
         ]);
+    }
+
+    /**
+     * Register the Ymir health endpoint and forward native health diagnostics to the Ymir diagnostic event.
+     */
+    protected function registerHealthEndpoint(): void
+    {
+        if (class_exists(LaravelDiagnosingHealth::class)) {
+            Event::listen(LaravelDiagnosingHealth::class, function (): void {
+                Event::dispatch(new DiagnosingHealth());
+            });
+        }
+
+        // The route cache includes the endpoint when built with it enabled, and checking it for conflicts would hydrate every cached route
+        if ($this->app instanceof CachesRoutes && $this->app->routesAreCached()) {
+            return;
+        }
+
+        if (array_key_exists(self::HEALTH_ENDPOINT_URI, Route::getRoutes()->get('GET'))) {
+            return;
+        }
+
+        // Older Laravel versions match routes in registration order, so a regular route would shadow application routes for other domains or parameters
+        Route::get(self::HEALTH_ENDPOINT_URI, GetHealthAction::class)->fallback();
     }
 
     /**

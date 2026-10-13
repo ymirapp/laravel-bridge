@@ -48,7 +48,9 @@ $ composer install
 ## Links
 
  * [Documentation][3]
+ * [Laravel guide][4]
 
 [1]: https://ymirapp.com
 [2]: https://laravel.com
 [3]: https://docs.ymirapp.com
+[4]: https://docs.ymirapp.com/guides/laravel

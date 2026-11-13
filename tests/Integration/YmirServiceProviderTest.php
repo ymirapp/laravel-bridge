@@ -227,15 +227,6 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame(CloudWatchFormatter::class, Config::get('logging.channels.stderr.formatter'));
     }
 
-    public function testConfiguresTrustedProxiesWhenNoneAreConfigured(): void
-    {
-        Config::set('trustedproxy.proxies', null);
-
-        $this->app->register(YmirServiceProvider::class);
-
-        $this->assertSame(['0.0.0.0/0', '2000:0:0:0:0:0:0:0/3'], Config::get('trustedproxy.proxies'));
-    }
-
     public function testDoesNotAddAwsSessionTokenToDynamoDbCacheNotUsingLambdaAccessKey(): void
     {
         Config::set('cache.stores', [
@@ -527,6 +518,15 @@ class YmirServiceProviderTest extends TestCase
         $this->app->register(YmirServiceProvider::class);
 
         $this->assertNull(Config::get('logging.channels.stderr.formatter'));
+    }
+
+    public function testDoesNotConfigureTrustedProxiesWhenNoneAreConfigured(): void
+    {
+        Config::set('trustedproxy.proxies', null);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertNull(Config::get('trustedproxy.proxies'));
     }
 
     public function testDoesNotConfigureTrustedProxiesWhenNotInYmirEnvironment(): void

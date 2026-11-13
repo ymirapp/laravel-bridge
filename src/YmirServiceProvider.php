@@ -106,7 +106,6 @@ class YmirServiceProvider extends ServiceProvider
         $this->configureAssetUrls();
         $this->configureLoggingRequestContext();
         $this->configureStderrLogging();
-        $this->configureTrustedProxy();
 
         $this->registerCommands();
         $this->registerQueueWorker();
@@ -228,14 +227,6 @@ class YmirServiceProvider extends ServiceProvider
         }
 
         Config::set('logging.channels.stderr.formatter', CloudWatchFormatter::class);
-    }
-
-    /**
-     * Configure trusted proxy.
-     */
-    protected function configureTrustedProxy(): void
-    {
-        Config::set('trustedproxy.proxies', Config::get('trustedproxy.proxies') ?? ['0.0.0.0/0', '2000:0:0:0:0:0:0:0/3']);
     }
 
     /**

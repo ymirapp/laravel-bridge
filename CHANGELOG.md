@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/ymirapp/laravel-bridge/compare/v1.3.0...v1.3.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* Stop trusting every proxy by default ([adb540e](https://github.com/ymirapp/laravel-bridge/commit/adb540e0abc03600cb814d3c1453490c9d03a308))
+
 ## [1.3.0](https://github.com/ymirapp/laravel-bridge/compare/v1.2.0...v1.3.0) (2026-10-13)
 
 

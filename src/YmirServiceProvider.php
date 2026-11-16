@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
 use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
 use Ymir\Bridge\Laravel\Http\Action\GetHealthAction;
@@ -104,6 +105,7 @@ class YmirServiceProvider extends ServiceProvider
         $this->overrideConfigurationOptions();
 
         $this->configureAssetUrls();
+        $this->configureEmergencyLogging();
         $this->configureLoggingRequestContext();
         $this->configureStderrLogging();
 
@@ -183,6 +185,20 @@ class YmirServiceProvider extends ServiceProvider
         if (!Config::get('app.mix_url')) {
             Config::set('app.mix_url', $assetUrl);
         }
+    }
+
+    /**
+     * Configure the emergency logger to write to STDERR.
+     */
+    protected function configureEmergencyLogging(): void
+    {
+        $path = Config::get('logging.channels.emergency.path');
+
+        if (is_string($path) && !Str::endsWith($path, '/storage/logs/laravel.log')) {
+            return;
+        }
+
+        Config::set('logging.channels.emergency.path', 'php://stderr');
     }
 
     /**

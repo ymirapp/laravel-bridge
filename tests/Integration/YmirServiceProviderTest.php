@@ -187,6 +187,33 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('https://assets.example.com', Config::get('app.mix_url'));
     }
 
+    public function testConfiguresEmergencyLogPathWhenItIsMissing(): void
+    {
+        Config::set('logging.channels.emergency', null);
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('php://stderr', Config::get('logging.channels.emergency.path'));
+    }
+
+    public function testConfiguresEmergencyLogPathWhenItUsesCachedLaravelDefault(): void
+    {
+        Config::set('logging.channels.emergency.path', '/home/runner/work/app/storage/logs/laravel.log');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('php://stderr', Config::get('logging.channels.emergency.path'));
+    }
+
+    public function testConfiguresEmergencyLogPathWhenItUsesLaravelDefault(): void
+    {
+        $this->assertSame(storage_path('logs/laravel.log'), Config::get('logging.channels.emergency.path'));
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('php://stderr', Config::get('logging.channels.emergency.path'));
+    }
+
     public function testConfiguresLoggingRequestContextWhenEnabled(): void
     {
         if (!method_exists(LogManager::class, 'shareContext')) {
@@ -471,6 +498,24 @@ class YmirServiceProviderTest extends TestCase
 
         $this->assertNull(Config::get('app.asset_url'));
         $this->assertNull(Config::get('app.mix_url'));
+    }
+
+    public function testDoesNotConfigureEmergencyLogPathWhenItIsCustomized(): void
+    {
+        Config::set('logging.channels.emergency.path', '/var/log/app/emergency.log');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame('/var/log/app/emergency.log', Config::get('logging.channels.emergency.path'));
+    }
+
+    public function testDoesNotConfigureEmergencyLogPathWhenNotInYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertSame(storage_path('logs/laravel.log'), Config::get('logging.channels.emergency.path'));
     }
 
     public function testDoesNotConfigureLoggingRequestContextWhenDisabled(): void

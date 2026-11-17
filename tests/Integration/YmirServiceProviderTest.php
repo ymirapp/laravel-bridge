@@ -214,7 +214,7 @@ class YmirServiceProviderTest extends TestCase
         $this->assertSame('php://stderr', Config::get('logging.channels.emergency.path'));
     }
 
-    public function testConfiguresLoggingRequestContextWhenEnabled(): void
+    public function testConfiguresLoggingRequestContextWithLambdaRequestIdWhenEnabled(): void
     {
         if (!method_exists(LogManager::class, 'shareContext')) {
             $this->markTestSkipped('LogManager::shareContext is not available in this version of Laravel.');
@@ -225,12 +225,12 @@ class YmirServiceProviderTest extends TestCase
         $logManager = $this->mock(LogManager::class);
         $logManager->shouldReceive('shareContext')
             ->once()
-            ->with(['requestId' => 'test-request-id']);
+            ->with(['requestId' => 'lambda-request-id']);
 
         $this->app->register(YmirServiceProvider::class);
 
-        $request = Request::create('/', 'GET');
-        $request->headers->set('X-Request-ID', 'test-request-id');
+        $request = Request::create('/', 'GET', [], [], [], ['AWS_REQUEST_ID' => 'lambda-request-id']);
+        $request->headers->set('X-Request-ID', 'client-request-id');
 
         $this->app->instance('request', $request);
     }
@@ -531,8 +531,7 @@ class YmirServiceProviderTest extends TestCase
 
         $this->app->register(YmirServiceProvider::class);
 
-        $request = Request::create('/', 'GET');
-        $request->headers->set('X-Request-ID', 'test-request-id');
+        $request = Request::create('/', 'GET', [], [], [], ['AWS_REQUEST_ID' => 'lambda-request-id']);
 
         $this->app->instance('request', $request);
     }
@@ -713,7 +712,7 @@ class YmirServiceProviderTest extends TestCase
         $this->get('/ymir/health')->assertOk()->assertSeeText('application');
     }
 
-    public function testDoesNotShareRequestContextWhenHeaderIsMissing(): void
+    public function testDoesNotShareRequestContextWhenLambdaRequestIdIsMissing(): void
     {
         if (!method_exists(LogManager::class, 'shareContext')) {
             $this->markTestSkipped('LogManager::shareContext is not available in this version of Laravel.');
@@ -727,6 +726,7 @@ class YmirServiceProviderTest extends TestCase
         $this->app->register(YmirServiceProvider::class);
 
         $request = Request::create('/', 'GET');
+        $request->headers->set('X-Request-ID', 'client-request-id');
 
         $this->app->instance('request', $request);
     }
@@ -741,8 +741,7 @@ class YmirServiceProviderTest extends TestCase
 
         $this->app->register(YmirServiceProvider::class);
 
-        $request = Request::create('/', 'GET');
-        $request->headers->set('X-Request-ID', 'test-request-id');
+        $request = Request::create('/', 'GET', [], [], [], ['AWS_REQUEST_ID' => 'lambda-request-id']);
 
         $this->app->instance('request', $request);
     }

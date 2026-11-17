@@ -211,7 +211,9 @@ class YmirServiceProvider extends ServiceProvider
         }
 
         $this->app->rebinding('request', function (Application $app, Request $request): void {
-            if (!$request->hasHeader('X-Request-ID')) {
+            $requestId = $request->server('AWS_REQUEST_ID');
+
+            if (empty($requestId) || !is_string($requestId)) {
                 return;
             }
 
@@ -222,7 +224,7 @@ class YmirServiceProvider extends ServiceProvider
             }
 
             $logManager->shareContext([
-                'requestId' => $request->header('X-Request-ID'),
+                'requestId' => $requestId,
             ]);
         });
     }

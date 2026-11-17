@@ -13,7 +13,7 @@ return RectorConfig::configure()
     ])
     ->withRules([
     ])
-    ->withPhp74Sets()
+    ->withPhpSets()
     ->withCodeQualityLevel(10)
     ->withDeadCodeLevel(10)
     ->withTypeCoverageLevel(10)

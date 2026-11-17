@@ -6,6 +6,11 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'composer.json'
+      - '.php-cs-fixer.dist.php'
+      - 'phpstan.neon'
+      - 'phpstan-baseline.neon'
+      - 'phpunit.xml.dist'
+      - 'rector.php'
 
 jobs:
   code-quality:

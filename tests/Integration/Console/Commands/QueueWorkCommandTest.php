@@ -14,7 +14,9 @@ declare(strict_types=1);
 namespace Ymir\Bridge\Laravel\Tests\Integration\Console\Commands;
 
 use Aws\Sqs\SqsClient;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Queue\Connectors\ConnectorInterface;
+use Illuminate\Queue\Failed\FailedJobProviderInterface;
 use Illuminate\Queue\SqsQueue;
 use Illuminate\Queue\WorkerOptions;
 use Ymir\Bridge\Laravel\Queue\SqsJob;
@@ -102,6 +104,16 @@ class QueueWorkCommandTest extends TestCase
              ->expectsOutput('Unable to resolve queue URL');
     }
 
+    public function testHandleReportsFailedJobStorageErrorWithoutHidingJobException(): void
+    {
+        $jobException = new \RuntimeException('job failed');
+        $storageException = new \RuntimeException('failed job storage is unavailable');
+        $failedJobProvider = \Mockery::mock(FailedJobProviderInterface::class);
+        $failedJobProvider->shouldReceive('log')->once()->andThrow($storageException);
+
+        $this->assertSame([$storageException, $jobException], $this->runFailingJob($jobException, $failedJobProvider));
+    }
+
     public function testHandleRunsWorkerWithSqsJob(): void
     {
         $this->runWorkerWithConnectionConfiguration(['driver' => 'sqs']);
@@ -110,6 +122,66 @@ class QueueWorkCommandTest extends TestCase
     public function testHandleRunsWorkerWithSqsJobIfOverflowConfigurationIsNull(): void
     {
         $this->runWorkerWithConnectionConfiguration(['driver' => 'sqs', 'overflow' => null]);
+    }
+
+    public function testHandleStoresJobThatRanOutOfAttemptsInFailedJobStorage(): void
+    {
+        $jobException = new \RuntimeException('job failed');
+        $failedJobProvider = \Mockery::mock(FailedJobProviderInterface::class);
+        $failedJobProvider->shouldReceive('log')->once()->with('sqs', 'https://sqs.us-east-1.amazonaws.com/123456789012/queue-name', $this->createFailingJobBody(), $jobException);
+
+        $this->assertSame([$jobException], $this->runFailingJob($jobException, $failedJobProvider));
+    }
+
+    private function createFailingJobBody(): string
+    {
+        return json_encode(['uuid' => 'uuid', 'displayName' => 'failing-job', 'job' => 'failing-job', 'maxTries' => 1, 'data' => [], 'attempts' => 0]);
+    }
+
+    private function runFailingJob(\Throwable $jobException, FailedJobProviderInterface $failedJobProvider): array
+    {
+        $reported = [];
+
+        $exceptionHandler = \Mockery::mock(ExceptionHandler::class)->shouldIgnoreMissing();
+        $exceptionHandler->shouldReceive('report')->andReturnUsing(function (\Throwable $exception) use (&$reported): void {
+            $reported[] = $exception;
+        });
+
+        $handler = \Mockery::mock();
+        $handler->shouldReceive('fire')->once()->andThrow($jobException);
+
+        $sqs = \Mockery::mock(SqsClient::class);
+        $sqs->shouldReceive('deleteMessage')->once()->with(['QueueUrl' => 'https://sqs.us-east-1.amazonaws.com/123456789012/queue-name', 'ReceiptHandle' => 'handle']);
+
+        $queue = \Mockery::mock(SqsQueue::class);
+        $queue->shouldReceive('getSqs')->andReturn($sqs);
+        $queue->shouldReceive('setConnectionName')->andReturnSelf();
+        $queue->shouldReceive('setContainer');
+        $queue->shouldReceive('setConfig');
+
+        $connector = \Mockery::mock(ConnectorInterface::class);
+        $connector->shouldReceive('connect')->andReturn($queue);
+
+        $this->app['queue']->extend('sqs', fn () => $connector);
+        $this->app['config']->set('queue.connections.sqs', ['driver' => 'sqs']);
+        $this->app->instance(ExceptionHandler::class, $exceptionHandler);
+        $this->app->instance('failing-job', $handler);
+        $this->app->instance('queue.failer', $failedJobProvider);
+        $this->app->instance(Worker::class, new Worker($this->app['queue'], $this->app['events'], $exceptionHandler, fn (): bool => false));
+
+        $message = base64_encode(json_encode([
+            'messageId' => 'id',
+            'receiptHandle' => 'handle',
+            'body' => $this->createFailingJobBody(),
+            'attributes' => ['ApproximateReceiveCount' => '1'],
+            'messageAttributes' => [],
+            'eventSourceARN' => 'arn:aws:sqs:us-east-1:123456789012:queue-name',
+        ]));
+
+        $this->artisan('ymir:queue:work', ['--message' => $message])
+             ->assertExitCode(0);
+
+        return $reported;
     }
 
     private function runWorkerWithConnectionConfiguration(array $configuration): void

@@ -14,6 +14,10 @@ declare(strict_types=1);
 namespace Ymir\Bridge\Laravel\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Failed\FailedJobProviderInterface;
 use Illuminate\Queue\SqsQueue;
 use Illuminate\Queue\WorkerOptions;
 use Illuminate\Support\Facades\Config;
@@ -64,7 +68,7 @@ class QueueWorkCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(Dispatcher $dispatcher, ExceptionHandler $exceptionHandler, FailedJobProviderInterface $failedJobProvider): int
     {
         if ($this->laravel->isDownForMaintenance() && !$this->option('force')) {
             return self::SUCCESS;
@@ -117,6 +121,8 @@ class QueueWorkCommand extends Command
             return self::FAILURE;
         }
 
+        $dispatcher->listen(JobFailed::class, fn (JobFailed $event) => $this->logFailedJob($event, $failedJobProvider, $exceptionHandler));
+
         $this->worker->runSqsJob(
             new SqsJob($this->laravel, $connection->getSqs(), $this->normalizeMessage($message), $connectionName, $queueUrl, $overflowStorage),
             $connectionName,
@@ -156,6 +162,18 @@ class QueueWorkCommand extends Command
         $message = json_decode($message, true);
 
         return is_array($message) ? $message : null;
+    }
+
+    /**
+     * Store the failed job in the failed job storage.
+     */
+    protected function logFailedJob(JobFailed $event, FailedJobProviderInterface $failedJobProvider, ExceptionHandler $exceptionHandler): void
+    {
+        try {
+            $failedJobProvider->log($event->connectionName, $event->job->getQueue(), $event->job->getRawBody(), $event->exception);
+        } catch (\Throwable $exception) {
+            $exceptionHandler->report($exception);
+        }
     }
 
     /**

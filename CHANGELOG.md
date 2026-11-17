@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.1](https://github.com/ymirapp/laravel-bridge/compare/v1.3.0...v1.3.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* Log the lambda request id instead of the request header ([dc3cae4](https://github.com/ymirapp/laravel-bridge/commit/dc3cae42b8b27c3989fdb8e86adcc1104be48f54))
+* Send laravel emergency logs to stderr ([3eb9eb5](https://github.com/ymirapp/laravel-bridge/commit/3eb9eb50fe1a19f8ca00490bb7008022ae899e96))
+* Stop trusting every proxy by default ([adb540e](https://github.com/ymirapp/laravel-bridge/commit/adb540e0abc03600cb814d3c1453490c9d03a308))
+* Store failed queue jobs ([c3b9121](https://github.com/ymirapp/laravel-bridge/commit/c3b91214f0a6da86811ef8e6e49246d6dfa7a286))
+
 ## [1.3.0](https://github.com/ymirapp/laravel-bridge/compare/v1.2.0...v1.3.0) (2026-10-13)
 
 

@@ -18,7 +18,7 @@
         "illuminate/redis": "^8.47|^9.0|^10.0|^11.0|^12.0|^13.0",
         "illuminate/queue": "^8.47|^9.0|^10.0|^11.0|^12.0|^13.0",
         "illuminate/support": "^8.47|^9.0|^10.0|^11.0|^12.0|^13.0",
-        "ymirapp/monolog-bridge": "^1.0"
+        "ymirapp/monolog-bridge": "^1.0|^2.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",

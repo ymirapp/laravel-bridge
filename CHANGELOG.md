@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/ymirapp/laravel-bridge/compare/v1.3.1...v1.4.0) (2026-11-18)
+
+
+### Features
+
+* Report php-fpm crashes recorded by the runtime to the exception handler ([2064f86](https://github.com/ymirapp/laravel-bridge/commit/2064f863f8db61e6a8973a16d377cdeeb91ae137))
+* Report php-fpm request timeouts recorded by the runtime to the exception handler ([2bb168f](https://github.com/ymirapp/laravel-bridge/commit/2bb168f953c4a5bff1f3a310389ed651991e1847))
+
 ## [1.3.1](https://github.com/ymirapp/laravel-bridge/compare/v1.3.0...v1.3.1) (2026-11-17)
 
 

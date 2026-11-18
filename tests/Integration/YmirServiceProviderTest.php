@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use Orchestra\Testbench\TestCase;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
 use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
+use Ymir\Bridge\Laravel\Exception\PhpFpmCrashException;
 use Ymir\Bridge\Laravel\Exception\RequestTimeoutException;
 use Ymir\Bridge\Laravel\Queue\SqsQueue;
 use Ymir\Bridge\Laravel\Queue\Worker;
@@ -910,13 +911,14 @@ class YmirServiceProviderTest extends TestCase
         $this->assertInvalidHealthEndpointEnabledOptionThrowsException('enabled');
     }
 
-    public function testReportsRuntimeTimeoutsToExceptionHandlerOnceAndIgnoresOtherRecords(): void
+    public function testReportsRuntimeErrorsToExceptionHandlerOnceAndIgnoresInvalidRecords(): void
     {
         file_put_contents(self::RUNTIME_ERRORS_FILE, implode(PHP_EOL, [
             '{"type":"timeout","message":"PHP-FPM request timed out after 28000ms","method":"POST","path":"/slow","requestId":"request-id","timestamp":1763481600}',
-            '{"type":"crash","message":"PHP-FPM process crashed unexpectedly","method":"GET","path":"/","requestId":"other-request-id","timestamp":1763481600}',
+            '{"type":"unknown","message":"Unknown error","method":"GET","path":"/","requestId":"unknown-request-id","timestamp":1763481600}',
             '{"type":"timeout","message":"PHP-FPM request timed out after 28000ms","method":"GET"}',
             'not json',
+            '{"type":"crash","message":"PHP-FPM ended the request without a response","method":"GET","path":"/export","requestId":"other-request-id","timestamp":1763485200}',
         ]).PHP_EOL);
 
         $reported = [];
@@ -924,16 +926,23 @@ class YmirServiceProviderTest extends TestCase
         $exceptionHandler->method('report')
                          ->willReturnCallback(function (\Throwable $exception) use (&$reported): void {
                              $reported[] = $exception;
+
+                             if (1 === count($reported)) {
+                                 throw new \RuntimeException('The error tracker is unavailable');
+                             }
                          });
 
         $this->app->instance(ExceptionHandler::class, $exceptionHandler);
         $this->app->register(YmirServiceProvider::class);
         $this->app->register(YmirServiceProvider::class, true);
 
-        $this->assertCount(1, $reported);
+        $this->assertCount(2, $reported);
         $this->assertInstanceOf(RequestTimeoutException::class, $reported[0]);
         $this->assertSame('PHP-FPM request timed out after 28000ms while handling "POST /slow"', $reported[0]->getMessage());
-        $this->assertSame(['requestId' => 'request-id', 'timedOutAt' => '2025-11-18T16:00:00+00:00'], $reported[0]->context());
+        $this->assertSame(['requestId' => 'request-id', 'occurredAt' => '2025-11-18T16:00:00+00:00'], $reported[0]->context());
+        $this->assertInstanceOf(PhpFpmCrashException::class, $reported[1]);
+        $this->assertSame('PHP-FPM ended the request without a response while handling "GET /export"', $reported[1]->getMessage());
+        $this->assertSame(['requestId' => 'other-request-id', 'occurredAt' => '2025-11-18T17:00:00+00:00'], $reported[1]->context());
         $this->assertFileDoesNotExist(self::RUNTIME_ERRORS_FILE);
     }
 

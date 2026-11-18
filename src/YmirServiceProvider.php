@@ -27,7 +27,9 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
 use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
+use Ymir\Bridge\Laravel\Exception\PhpFpmCrashException;
 use Ymir\Bridge\Laravel\Exception\RequestTimeoutException;
+use Ymir\Bridge\Laravel\Exception\RuntimeErrorException;
 use Ymir\Bridge\Laravel\Http\Action\GetHealthAction;
 use Ymir\Bridge\Laravel\Queue\SqsConnector;
 use Ymir\Bridge\Laravel\Queue\Worker;
@@ -388,7 +390,7 @@ class YmirServiceProvider extends ServiceProvider
             return;
         }
 
-        collect($lines)->each(fn (string $line) => rescue(fn () => $exceptionHandler->report(RequestTimeoutException::fromRuntimeRecord($line)), null, false));
+        collect($lines)->each(fn (string $line) => rescue(fn () => $exceptionHandler->report($this->createRuntimeErrorException($line)), null, false));
     }
 
     /**
@@ -397,6 +399,27 @@ class YmirServiceProvider extends ServiceProvider
     protected function runningOnYmir(): bool
     {
         return getenv('LAMBDA_TASK_ROOT') && getenv('YMIR_ENVIRONMENT');
+    }
+
+    /**
+     * Create the exception for an error that the Ymir runtime recorded as a JSON line.
+     */
+    private function createRuntimeErrorException(string $line): RuntimeErrorException
+    {
+        $record = json_decode($line, true);
+
+        if (!is_array($record) || !is_string($record['message'] ?? null) || !is_string($record['method'] ?? null) || !is_string($record['path'] ?? null) || !is_string($record['requestId'] ?? null) || !is_int($record['timestamp'] ?? null)) {
+            throw new \UnexpectedValueException('The Ymir runtime record needs a string "message", "method", "path" and "requestId" and an integer "timestamp"');
+        }
+
+        switch ($record['type'] ?? null) {
+            case 'crash':
+                return new PhpFpmCrashException($record['message'], $record['method'], $record['path'], $record['requestId'], $record['timestamp']);
+            case 'timeout':
+                return new RequestTimeoutException($record['message'], $record['method'], $record['path'], $record['requestId'], $record['timestamp']);
+            default:
+                throw new \UnexpectedValueException('The Ymir runtime record has no supported error type');
+        }
     }
 
     /**

@@ -27,6 +27,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
 use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
+use Ymir\Bridge\Laravel\Exception\RequestTimeoutException;
 use Ymir\Bridge\Laravel\Http\Action\GetHealthAction;
 use Ymir\Bridge\Laravel\Queue\SqsConnector;
 use Ymir\Bridge\Laravel\Queue\Worker;
@@ -46,6 +47,11 @@ class YmirServiceProvider extends ServiceProvider
      * The URI of the Ymir health endpoint.
      */
     private const HEALTH_ENDPOINT_URI = 'ymir/health';
+
+    /**
+     * The file where the Ymir runtime records the errors the application never sees, one JSON object per line.
+     */
+    private const RUNTIME_ERRORS_FILE = '/tmp/.ymir/runtime-errors.jsonl';
 
     /**
      * The AWS service drivers that accept the Lambda session token, keyed by their configuration path.
@@ -87,6 +93,10 @@ class YmirServiceProvider extends ServiceProvider
                 $this->addQueueConnector();
             });
         }
+
+        $this->app->booted(function (): void {
+            $this->reportRuntimeErrors();
+        });
     }
 
     /**
@@ -353,6 +363,32 @@ class YmirServiceProvider extends ServiceProvider
     protected function registerQueueWorker(): void
     {
         $this->app->singleton(Worker::class, fn (): Worker => new Worker($this->app['queue'], $this->app['events'], $this->app[ExceptionHandler::class], fn (): bool => $this->app->isDownForMaintenance()));
+    }
+
+    /**
+     * Report the errors that the Ymir runtime recorded, such as request timeouts, to the application exception handler.
+     */
+    protected function reportRuntimeErrors(): void
+    {
+        if (!is_file(self::RUNTIME_ERRORS_FILE)) {
+            return;
+        }
+
+        $lines = file(self::RUNTIME_ERRORS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        unlink(self::RUNTIME_ERRORS_FILE);
+
+        if (empty($lines)) {
+            return;
+        }
+
+        $exceptionHandler = $this->app->make(ExceptionHandler::class);
+
+        if (!$exceptionHandler instanceof ExceptionHandler) {
+            return;
+        }
+
+        collect($lines)->each(fn (string $line) => rescue(fn () => $exceptionHandler->report(RequestTimeoutException::fromRuntimeRecord($line)), null, false));
     }
 
     /**

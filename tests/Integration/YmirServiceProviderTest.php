@@ -15,6 +15,7 @@ namespace Ymir\Bridge\Laravel\Tests\Integration;
 
 use Illuminate\Auth\GenericUser;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Events\DiagnosingHealth as LaravelDiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use Orchestra\Testbench\TestCase;
 use Ymir\Bridge\Laravel\Console\Commands\QueueWorkCommand;
 use Ymir\Bridge\Laravel\Events\DiagnosingHealth;
+use Ymir\Bridge\Laravel\Exception\RequestTimeoutException;
 use Ymir\Bridge\Laravel\Queue\SqsQueue;
 use Ymir\Bridge\Laravel\Queue\Worker;
 use Ymir\Bridge\Laravel\YmirServiceProvider;
@@ -45,6 +47,8 @@ class YmirServiceProviderTest extends TestCase
 
     private const HEALTH_CHECK_SERVER_VARIABLES = ['YMIR_HEALTH_CHECK' => '1'];
 
+    private const RUNTIME_ERRORS_FILE = '/tmp/.ymir/runtime-errors.jsonl';
+
     private array $previousEnvironment = [];
 
     private array $previousServerVariables = [];
@@ -57,6 +61,10 @@ class YmirServiceProviderTest extends TestCase
             $this->previousEnvironment[$name] = getenv($name);
 
             putenv(sprintf('%s=%s', $name, $value));
+        }
+
+        if (!is_dir(dirname(self::RUNTIME_ERRORS_FILE))) {
+            mkdir(dirname(self::RUNTIME_ERRORS_FILE));
         }
     }
 
@@ -72,6 +80,10 @@ class YmirServiceProviderTest extends TestCase
             } else {
                 $_SERVER[$name] = $value;
             }
+        }
+
+        if (is_file(self::RUNTIME_ERRORS_FILE)) {
+            unlink(self::RUNTIME_ERRORS_FILE);
         }
 
         parent::tearDown();
@@ -712,6 +724,21 @@ class YmirServiceProviderTest extends TestCase
         $this->get('/ymir/health')->assertOk()->assertSeeText('application');
     }
 
+    public function testDoesNotReportRuntimeErrorsWhenNotInYmirEnvironment(): void
+    {
+        putenv('YMIR_ENVIRONMENT');
+        file_put_contents(self::RUNTIME_ERRORS_FILE, '{"type":"timeout","message":"PHP-FPM request timed out after 28000ms","method":"GET","path":"/slow","requestId":"request-id","timestamp":1763481600}'.PHP_EOL);
+
+        $exceptionHandler = $this->createMock(ExceptionHandler::class);
+        $exceptionHandler->expects($this->never())
+                         ->method('report');
+
+        $this->app->instance(ExceptionHandler::class, $exceptionHandler);
+        $this->app->register(YmirServiceProvider::class);
+
+        $this->assertFileExists(self::RUNTIME_ERRORS_FILE);
+    }
+
     public function testDoesNotShareRequestContextWhenLambdaRequestIdIsMissing(): void
     {
         if (!method_exists(LogManager::class, 'shareContext')) {
@@ -881,6 +908,33 @@ class YmirServiceProviderTest extends TestCase
     public function testRejectsHealthEndpointEnabledOptionWhenValueIsInvalidString(): void
     {
         $this->assertInvalidHealthEndpointEnabledOptionThrowsException('enabled');
+    }
+
+    public function testReportsRuntimeTimeoutsToExceptionHandlerOnceAndIgnoresOtherRecords(): void
+    {
+        file_put_contents(self::RUNTIME_ERRORS_FILE, implode(PHP_EOL, [
+            '{"type":"timeout","message":"PHP-FPM request timed out after 28000ms","method":"POST","path":"/slow","requestId":"request-id","timestamp":1763481600}',
+            '{"type":"crash","message":"PHP-FPM process crashed unexpectedly","method":"GET","path":"/","requestId":"other-request-id","timestamp":1763481600}',
+            '{"type":"timeout","message":"PHP-FPM request timed out after 28000ms","method":"GET"}',
+            'not json',
+        ]).PHP_EOL);
+
+        $reported = [];
+        $exceptionHandler = $this->createMock(ExceptionHandler::class);
+        $exceptionHandler->method('report')
+                         ->willReturnCallback(function (\Throwable $exception) use (&$reported): void {
+                             $reported[] = $exception;
+                         });
+
+        $this->app->instance(ExceptionHandler::class, $exceptionHandler);
+        $this->app->register(YmirServiceProvider::class);
+        $this->app->register(YmirServiceProvider::class, true);
+
+        $this->assertCount(1, $reported);
+        $this->assertInstanceOf(RequestTimeoutException::class, $reported[0]);
+        $this->assertSame('PHP-FPM request timed out after 28000ms while handling "POST /slow"', $reported[0]->getMessage());
+        $this->assertSame(['requestId' => 'request-id', 'timedOutAt' => '2025-11-18T16:00:00+00:00'], $reported[0]->context());
+        $this->assertFileDoesNotExist(self::RUNTIME_ERRORS_FILE);
     }
 
     public function testSqsQueueConnectionDoesNotUseYmirSqsQueueWhenNotInYmirEnvironment(): void

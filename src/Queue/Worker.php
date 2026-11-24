@@ -36,7 +36,9 @@ class Worker extends LaravelQueueWorker
         pcntl_async_signals(true);
 
         pcntl_signal(SIGALRM, function () use ($job): void {
-            $this->markJobAsFailedIfItShouldFailOnTimeout($job->getConnectionName(), $job, $this->maxAttemptsExceededException($job));
+            $exception = method_exists($this, 'timeoutExceededException') ? $this->timeoutExceededException($job) : null;
+
+            $this->markJobAsFailedIfItShouldFailOnTimeout($job->getConnectionName(), $job, $exception instanceof \Throwable ? $exception : $this->maxAttemptsExceededException($job));
 
             exit(1);
         });

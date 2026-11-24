@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/ymirapp/laravel-bridge/compare/v1.4.0...v1.4.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* Fail timed-out queue jobs with laravel's timeout exception ([b91af9e](https://github.com/ymirapp/laravel-bridge/commit/b91af9ed8224a2789eedf7747c012cc23ffd10b6))
+
 ## [1.4.0](https://github.com/ymirapp/laravel-bridge/compare/v1.3.1...v1.4.0) (2026-11-18)
 
 
